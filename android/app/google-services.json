@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1080260447345",
+    "project_id": "mapeador-de-qualidade-de-vida",
+    "storage_bucket": "mapeador-de-qualidade-de-vida.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1080260447345:android:ae78b71c4da63cd3331fd0",
+        "android_client_info": {
+          "package_name": "com.example.mapa_birigui_final"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBUuKuWQYu2WX96H_5KQaaEGgweTm4X9Co"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
