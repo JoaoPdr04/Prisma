@@ -76,7 +76,7 @@ class _MapScreenState extends State<MapScreen> {
 
   StreamSubscription<Position>? _positionStreamSubscription;
 
-  final String _currentVersion = "1.0.0"; // Versão atual do seu app
+  final String _currentVersion = "1.1.0"; // Versão atual do seu app
 
   Future<void> _checkUpdate() async {
     // IMPORTANTE: Use o seu link RAW do GitHub aqui
