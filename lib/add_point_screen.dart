@@ -351,6 +351,9 @@ class _AddPointScreenState extends State<AddPointScreen> {
                       point: _selectedPoint!,
                       width: 40,
                       height: 40,
+
+                      rotate: false,
+
                       child: Transform.translate(
                         offset: const Offset(0, -20), 
                         child: Icon(

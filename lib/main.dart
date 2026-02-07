@@ -710,6 +710,8 @@ Future<void> _setupInitialLocation() async {
               height: 50,
               alignment: Alignment.center,
               
+              rotate: false,
+
               child: GestureDetector(
                 onTap: () => _showPointDetails(data, doc.id),
                 child: Stack(
