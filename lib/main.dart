@@ -16,6 +16,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 void main() async {
   print('--- APLICATIVO INICIADO ---');
@@ -75,6 +76,52 @@ class _MapScreenState extends State<MapScreen> {
 
   StreamSubscription<Position>? _positionStreamSubscription;
 
+  final String _currentVersion = "1.0.0"; // Versão atual do seu app
+
+  Future<void> _checkUpdate() async {
+    // IMPORTANTE: Use o seu link RAW do GitHub aqui
+    final url = Uri.parse("https://raw.githubusercontent.com/JoaoPdr04/Prisma/main/version.json");
+
+    try {
+      final response = await http.get(url);
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['latest_version'] != _currentVersion) {
+          _showUpdateDialog(data['latest_version'], data['download_url']);
+        }
+      }
+    } catch (e) {
+      debugPrint("Erro ao verificar atualização: $e");
+    }
+  }
+
+  void _showUpdateDialog(String newVersion, String url) {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text("Nova Atualização! 🚀"),
+        content: Text("Uma nova versão ($newVersion) do Prisma está disponível. Deseja baixar agora?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Depois"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final uri = Uri.parse(url);
+              if (await canLaunchUrl(uri)) {
+                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              }
+            },
+            child: const Text("Atualizar"),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -82,6 +129,7 @@ class _MapScreenState extends State<MapScreen> {
     _verificarPapelAdmin();
     _listenToDescriptors();
     _startLocationUpdates();
+    _checkUpdate();
   }
 
   @override
