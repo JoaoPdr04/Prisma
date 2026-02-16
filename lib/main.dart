@@ -17,6 +17,9 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'admin_requests_screen.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import 'notifications_screen.dart';
 
 void main() async {
   print('--- APLICATIVO INICIADO ---');
@@ -58,7 +61,9 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  bool _isAdmin = false;
+  String _userRole = 'leitor'; // Padrão: todo mundo começa como leitor
+  bool get _isAdmin => _userRole == 'admin';
+  bool get _canAdd => _userRole == 'admin' || _userRole == 'colaborador';
   final MapController _mapController = MapController();
   
   LatLng? _userCurrentLocation;
@@ -76,7 +81,7 @@ class _MapScreenState extends State<MapScreen> {
 
   StreamSubscription<Position>? _positionStreamSubscription;
 
-  final String _currentVersion = "1.1.0"; // Versão atual do seu app
+  final String _currentVersion = "1.0.0"; // Versão atual do seu app
 
   Future<void> _checkUpdate() async {
     // IMPORTANTE: Use o seu link RAW do GitHub aqui
@@ -84,6 +89,10 @@ class _MapScreenState extends State<MapScreen> {
 
     try {
       final response = await http.get(url);
+
+      print("Status Code: ${response.statusCode}"); // Adicione isso
+      print("Conteúdo do JSON: ${response.body}");
+
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         if (data['latest_version'] != _currentVersion) {
@@ -111,8 +120,8 @@ class _MapScreenState extends State<MapScreen> {
           ElevatedButton(
             onPressed: () async {
               final uri = Uri.parse(url);
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
+              if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+                  debugPrint("Não foi possível abrir o link: $url");
               }
             },
             child: const Text("Atualizar"),
@@ -126,7 +135,7 @@ class _MapScreenState extends State<MapScreen> {
   void initState() {
     super.initState();
     _lastMapPosition = _biriguiCenter;
-    _verificarPapelAdmin();
+    _checkUserRole();
     _listenToDescriptors();
     _startLocationUpdates();
     _checkUpdate();
@@ -231,16 +240,23 @@ Future<void> _setupInitialLocation() async {
     _mapController.move(_mapController.camera.center, currentZoom - 1);
   }
 
-  Future<void> _verificarPapelAdmin() async {
+  Future<void> _checkUserRole() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    if (user == null) {
+      setState(() => _userRole = 'leitor');
+      return;
+    }
+
     try {
       final doc = await FirebaseFirestore.instance.collection('usuarios').doc(user.uid).get();
-      if (doc.exists && doc.data()?['papel'] == 'admin') {
-        if (mounted) setState(() => _isAdmin = true);
+      if (doc.exists) {
+        setState(() {
+          // Pega o cargo do banco. Se não tiver, assume 'leitor'.
+          _userRole = doc.data()?['cargo'] ?? 'leitor';
+        });
       }
     } catch (e) {
-      print('Erro admin: $e');
+      print('Erro ao verificar cargo: $e');
     }
   }
 
@@ -346,7 +362,7 @@ Future<void> _setupInitialLocation() async {
                   ),
                   const SizedBox(height: 24),
                   
-                  if (_isAdmin) 
+                  if (_canAdd) 
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
@@ -430,6 +446,117 @@ Future<void> _setupInitialLocation() async {
     }
   }
 
+  // --- FUNÇÃO PARA PEDIR ACESSO (COM DIAGNÓSTICO) ---
+  void _showRequestAccessDialog() {
+    final TextEditingController reasonController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) { // Mudei o nome para não confundir com o context principal
+        return AlertDialog(
+          title: const Text('Solicitar Acesso'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Por que você precisa de acesso?'),
+              const SizedBox(height: 10),
+              TextField(
+                controller: reasonController,
+                decoration: const InputDecoration(
+                  hintText: 'Digite o motivo aqui...',
+                  border: OutlineInputBorder(),
+                ),
+                maxLines: 3,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                print("1. Botão Enviar clicado");
+
+                final reason = reasonController.text.trim();
+                print("2. Texto digitado: '$reason'");
+
+                if (reason.isEmpty) {
+                  print("ERRO: O texto está vazio. O envio foi cancelado.");
+                  return; 
+                }
+
+                final user = FirebaseAuth.instance.currentUser;
+                print("3. Usuário atual: ${user?.uid}");
+
+                if (user == null) {
+                  print("ERRO: Usuário não está logado.");
+                  return;
+                }
+
+                // Fecha o diálogo visualmente
+                Navigator.pop(dialogContext);
+                print("4. Diálogo fechado, tentando enviar para o Firebase...");
+
+                try {
+                  await FirebaseFirestore.instance.collection('solicitacoes').add({
+                    'uid': user.uid,
+                    'nome': user.displayName ?? 'Sem Nome',
+                    'email': user.email ?? 'Sem Email',
+                    'motivo': reason,
+                    'status': 'pendente',
+                    'data': FieldValue.serverTimestamp(),
+                  });
+                  
+                  print("5. SUCESSO! Documento criado no Firebase.");
+
+                  try {
+                    // 1. Procura quem são os administradores no banco
+                    final adminsQuery = await FirebaseFirestore.instance
+                        .collection('usuarios')
+                        .where('cargo', isEqualTo: 'admin')
+                        .get();
+
+                    // 2. Manda uma notificação para CADA admin encontrado
+                    for (var adminDoc in adminsQuery.docs) {
+                      await FirebaseFirestore.instance.collection('notificacoes').add({
+                        'destinatarioId': adminDoc.id, // O ID do Admin
+                        'titulo': 'Nova Solicitação! 🔔',
+                        'mensagem': '${user.displayName} pediu acesso de Colaborador.',
+                        'data': FieldValue.serverTimestamp(),
+                        'lida': false,
+                      });
+                    }
+                    print("6. Admins notificados.");
+                  } catch (e) {
+                    print("Erro ao notificar admins (não impede o fluxo): $e");
+                  }
+
+                  // Mostra mensagem de sucesso
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Solicitação enviada com sucesso!'), backgroundColor: Colors.green),
+                    );
+                  }
+                } catch (e) {
+                  print("ERRO CRÍTICO NO FIREBASE: $e");
+                  
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Erro: $e'), backgroundColor: Colors.red),
+                    );
+                  }
+                }
+              },
+              child: const Text('Enviar'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     Query pointsQuery = FirebaseFirestore.instance.collection('pontos_interesse');
@@ -440,6 +567,30 @@ Future<void> _setupInitialLocation() async {
         title: const Text('Prisma'),
         centerTitle: true,
         actions: [
+
+          IconButton(
+            icon: const Icon(Icons.notifications),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const NotificationsScreen()),
+              );
+            },
+          ),
+
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Recarregar Informações',
+            onPressed: () async {
+              // Recarrega o cargo do usuário
+              await _checkUserRole();              
+              setState(() {}); // Força a tela a redesenhar
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Informações atualizadas!'), duration: Duration(seconds: 1)),
+              );
+            },
+          ),
+
           IconButton(
             icon: const Icon(Icons.search),
             onPressed: _openAdvancedSearch,
@@ -589,34 +740,130 @@ Future<void> _setupInitialLocation() async {
                     );
                   }).toList(),
 
-                  const Divider(),
-                  if (_isAdmin) ...[
-                    ListTile(
-                      leading: const Icon(Icons.add_location_alt),
-                      title: const Text('Adicionar Ponto'),
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(context, MaterialPageRoute(builder: (context) => AddPointScreen(initialCenter: _userCurrentLocation ?? _biriguiCenter)));
-                      },
-                    ),
-                    ListTile(
-                      leading: const Icon(Icons.category),
-                      title: const Text('Gerenciar Descritores'),
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(context, MaterialPageRoute(builder: (context) => const CategoryManagerScreen()));
-                      },
-                    ),
-                  ],
-                  ListTile(
-                    leading: Icon(_isAdmin ? Icons.logout : Icons.admin_panel_settings),
-                    title: Text(_isAdmin ? 'Sair (Logout)' : 'Login de Administrador'),
-                    onTap: () async {
-                      if (_isAdmin) await FirebaseAuth.instance.signOut();
-                      Navigator.of(context).pushReplacement(MaterialPageRoute(builder: (context) => _isAdmin ? const MapScreen() : LoginScreen()));
+                  // ... (Acima disso estão os Checkbox dos filtros) ...
+                  
+                  const SizedBox(height: 20),
+                  const Divider(thickness: 2), // Uma linha mais grossa para separar
+                  
+                  // --- LÓGICA DE BOTÕES DO RODAPÉ ---
+                  Builder(
+                    builder: (context) {
+                      final user = FirebaseAuth.instance.currentUser;
+
+                      // 1. SE FOR VISITANTE (Não logado)
+                      if (user == null) {
+                        return ListTile(
+                          leading: const Icon(Icons.login, color: Colors.green),
+                          title: const Text('Fazer Login / Criar Conta', style: TextStyle(fontWeight: FontWeight.bold)),
+                          onTap: () {
+                            // Fecha o menu e vai para a tela de login
+                            Navigator.pop(context); 
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(builder: (context) => const LoginScreen()),
+                            );
+                          },
+                        );
+                      }
+
+                      // 2. SE ESTIVER LOGADO (Admin, Colaborador ou Leitor)
+                      return Column(
+                        children: [
+                          // Botão: Adicionar Ponto (Só Admin/Colaborador)
+                          if (_canAdd)
+                            ListTile(
+                              leading: const Icon(Icons.add_location_alt),
+                              title: const Text('Adicionar Ponto'),
+                              onTap: () {
+                                final LatLng center = _mapController.camera.center;
+                                Navigator.pop(context);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => AddPointScreen(initialCenter: center),
+                                  ),
+                                );
+                              },
+                            ),
+
+                          // Botão: Gerenciar Descritores (Só Admin)
+                          if (_isAdmin)
+                            ListTile(
+                              leading: const Icon(Icons.category),
+                              title: const Text('Gerenciar Descritores'),
+                              onTap: () {
+                                Navigator.pop(context);
+                                // Adicione aqui a navegação para tela de descritores se tiver
+                              },
+                            ),
+
+                            // --- NOVO BOTÃO: Solicitações (Só Admin) ---
+                          if (_isAdmin)
+                            ListTile(
+                              leading: const Icon(Icons.notifications_active, color: Colors.orange),
+                              title: const Text('Solicitações de Acesso'),
+                              onTap: () {
+                                print("CLICOU NO BOTÃO DE SOLICITAÇÕES"); // <--- Adicione isso
+
+                                Navigator.pop(context);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => AdminRequestsScreen()),
+                                );
+                              },
+                            ),
+
+                          // Botão: Quero ser Colaborador (Só Leitor Logado)
+                          if (_userRole == 'leitor')
+                            ListTile(
+                              leading: const Icon(Icons.verified_user, color: Colors.blueGrey),
+                              title: const Text('Quero ser Colaborador'),
+                              onTap: () {
+                                Navigator.pop(context);
+                                _showRequestAccessDialog();
+                              },
+                            ),
+
+                          const Divider(),
+
+                          // Botão: Sair (Logout)
+                          ListTile(
+                            leading: const Icon(Icons.exit_to_app, color: Colors.red),
+                            title: const Text('Sair da Conta'),
+                            onTap: () async {
+                              // 1. Desconecta do Google (Isso força a escolha de conta na próxima vez)
+                              try {
+                                await GoogleSignIn().signOut();
+                                await GoogleSignIn().disconnect(); // Força extra para limpar o cache
+                              } catch (e) {
+                                // Ignora erros se não estiver logado com Google
+                              }
+
+                              // 2. Sai do Firebase
+                              await FirebaseAuth.instance.signOut();
+
+                              if (context.mounted) {
+                                // 3. Reseta permissões locais e volta pro Login
+                                setState(() {
+                                   _userRole = 'leitor'; 
+                                });
+                                Navigator.pop(context); // Fecha o menu
+                                
+                                // Vai para a tela de login
+                                Navigator.pushReplacement(
+                                  context,
+                                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                                );
+                              }
+                            },
+                          ),
+                        ],
+                      );
                     },
                   ),
+                  
                   const SizedBox(height: 20),
+                  // Fim do Drawer
                 ],
               ),
             ),
@@ -826,7 +1073,7 @@ Future<void> _setupInitialLocation() async {
           ),
           const SizedBox(height: 20),
           
-          if (_isAdmin) ...[
+          if (_canAdd) ...[
             FloatingActionButton(
               heroTag: "btnAdd",
               onPressed: () {
