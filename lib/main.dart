@@ -1127,6 +1127,16 @@ Future<void> _setupInitialLocation() async {
           panBuffer: 2,
           keepBuffer: 5,
         ),
+
+        RichAttributionWidget(
+        attributions: [
+        TextSourceAttribution(
+          'OpenStreetMap contributors',
+          onTap: () => launchUrl(Uri.parse('https://openstreetmap.org/copyright')), // Requer import do url_launcher
+        ),
+      ],
+    ),
+
         MarkerLayer(markers: allMarkers),
       ],
     );
