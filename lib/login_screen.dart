@@ -65,9 +65,11 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _signInWithGoogle() async {
     setState(() => _isLoading = true);
     try {
-      // 1. Abre a janelinha do Google
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-      
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+      await googleSignIn.signOut(); 
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+
+
       if (googleUser == null) {
         setState(() => _isLoading = false);
         return; // Usuário cancelou

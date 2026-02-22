@@ -28,7 +28,7 @@ class SobreScreen extends StatelessWidget {
                 SizedBox(height: 16),
                 Text(
                   "Prisma",
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
                 ),
                 Text("Mapeador de Qualidade de Vida v1.2.0"),
               ],

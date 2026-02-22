@@ -21,6 +21,11 @@ import 'admin_requests_screen.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'notifications_screen.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert'; // Para ler o JSON da resposta
+import 'package:package_info_plus/package_info_plus.dart';
 
 void main() async {
   print('--- APLICATIVO INICIADO ---');
@@ -37,11 +42,23 @@ SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
+
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Prisma',
       debugShowCheckedModeBanner: false,
+
+    localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('pt', 'BR'), // Português do Brasil
+      ],
+
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
           seedColor: Colors.blue,
@@ -68,7 +85,7 @@ class MyApp extends StatelessWidget {
   },
 ),
     );
-  }
+  }  
 }
 
 class MapScreen extends StatefulWidget {
@@ -79,9 +96,17 @@ class MapScreen extends StatefulWidget {
 }
 
 class _MapScreenState extends State<MapScreen> {
-  String _userRole = 'leitor'; // Padrão: todo mundo começa como leitor
+
+  String? userName = "Carregando...";
+  String? userEmail = "";
+  String? userPhotoUrl;
+  String userRole = "leitor"; // Define o padrão como leitor
+  bool isVisitante = false;
+
+  String _userRole = 'leitor'; // <--- O INIMIGO ESTÁ AQUI (DUPLICADO)
   bool get _isAdmin => _userRole == 'admin';
   bool get _canAdd => _userRole == 'admin' || _userRole == 'colaborador';
+
   final MapController _mapController = MapController();
   
   LatLng? _userCurrentLocation;
@@ -99,26 +124,80 @@ class _MapScreenState extends State<MapScreen> {
 
   StreamSubscription<Position>? _positionStreamSubscription;
 
-  final String _currentVersion = "1.0.0"; // Versão atual do seu app
-
   Future<void> _checkUpdate() async {
     // IMPORTANTE: Use o seu link RAW do GitHub aqui
     final url = Uri.parse("https://raw.githubusercontent.com/JoaoPdr04/Prisma/main/version.json");
 
-    try {
-      final response = await http.get(url);
+try {
+      // 1. Descobre a versão instalada no celular agora
+      PackageInfo packageInfo = await PackageInfo.fromPlatform();
+      String localVersion = packageInfo.version; // Ex: "1.0.0"
+      String buildNumber = packageInfo.buildNumber; // Ex: "1"
 
-      print("Status Code: ${response.statusCode}"); // Adicione isso
-      print("Conteúdo do JSON: ${response.body}");
+      print("Versão instalada: $localVersion (Build $buildNumber)");
+
+      // 2. Busca a versão nova na internet
+      final response = await http.get(url);
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
-        if (data['latest_version'] != _currentVersion) {
-          _showUpdateDialog(data['latest_version'], data['download_url']);
+        String remoteVersion = data['latest_version'];
+        
+        // 3. Compara: Se a versão da internet for diferente da local
+        if (remoteVersion != localVersion) {
+           print("Nova versão encontrada: $remoteVersion");
+          _showUpdateDialog(remoteVersion, data['download_url']);
+        } else {
+           print("O App já está atualizado.");
         }
       }
     } catch (e) {
       debugPrint("Erro ao verificar atualização: $e");
+    }
+  }
+
+  // Função que busca o endereço na internet
+  Future<void> _buscarEnderecoOnline(String query) async {
+    if (query.isEmpty) return;
+
+    // URL do Nominatim (OpenStreetMap)
+    final url = Uri.parse(
+        'https://nominatim.openstreetmap.org/search?q=$query&format=json&limit=1&addressdetails=1');
+
+    try {
+      final response = await http.get(
+        url,
+        // O Nominatim exige um User-Agent para não bloquear
+        headers: {'User-Agent': 'com.exemplo.prisma'}, 
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data is List && data.isNotEmpty) {
+          // Pegamos o primeiro resultado
+          final resultado = data[0];
+          final double lat = double.parse(resultado['lat']);
+          final double lon = double.parse(resultado['lon']);
+          final String nomeEncontrado = resultado['display_name'];
+
+          // Move o mapa para lá
+          _mapController.move(LatLng(lat, lon), 16.0); // Zoom 16 é bom para ruas
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Indo para: $nomeEncontrado')),
+          );
+          
+          // Opcional: Limpar a barra de pesquisa ou fechar o teclado
+          FocusScope.of(context).unfocus();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Endereço não encontrado.')),
+          );
+        }
+      }
+    } catch (e) {
+      print("Erro na busca: $e");
     }
   }
 
@@ -153,7 +232,7 @@ class _MapScreenState extends State<MapScreen> {
   void initState() {
     super.initState();
     _lastMapPosition = _biriguiCenter;
-    _checkUserRole();
+    _loadUserData();
     _listenToDescriptors();
     _startLocationUpdates();
     _checkUpdate();
@@ -163,6 +242,14 @@ class _MapScreenState extends State<MapScreen> {
   void dispose() {
     _positionStreamSubscription?.cancel();
     super.dispose();
+  }
+
+  Future<void> _abrirLink(String url) async {
+    final Uri uri = Uri.parse(url);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+       // Se der erro, avisa no console ou ignora
+       debugPrint('Não foi possível abrir o link: $url');
+    }
   }
 
   Future<void> _startLocationUpdates() async {
@@ -248,6 +335,58 @@ Future<void> _setupInitialLocation() async {
     }
   }
 
+  void _showSobreApp() {
+  showAboutDialog(
+    context: context,
+    applicationName: 'Prisma - Mapeador de Qualidade de Vida',
+    applicationVersion: '1.2.0',
+    applicationIcon: Image.asset(
+      'assets/icon/app_icon.png', 
+      width: 50, 
+      height: 50, 
+      errorBuilder: (c, e, s) => const Icon(Icons.map, size: 40, color: Colors.blue)
+    ),
+    children: [
+      const Padding(
+        padding: EdgeInsets.only(top: 15),
+        child: Text(
+          'O Prisma é uma ferramenta colaborativa desenvolvida por alunos e docentes do Intituto Federal de São Paulo, campus Birigui, com a finalidade de catalogar através de um mapa, os indicadores de Qualidade de Vida e Direitos Humanos da cidade de Birigui-SP e região. '
+          '\n\nNosso objetivo é dar voz aos cidadãos, indentificando pontos positivos e críticos na cidade.'
+          '\n\nRecomendamos que todos os usuarios estejam cientes de nossos Termos de Uso e Políticas de Privacidade a fim de otimizar e potencializar o uso do aplicativo',
+          style: TextStyle(fontSize: 14),
+          textAlign: TextAlign.justify,
+        ),
+      ),
+      const Divider(),
+      ListTile(
+        leading: const Icon(Icons.description, color: Colors.blue),
+        title: const Text('Termos de Uso'),
+        subtitle: const Text('Leia nossos termos de uso'),
+        onTap: () => _abrirLink('https://raw.githubusercontent.com/JoaoPdr04/Prisma/refs/heads/main/docs/TERMOS.md'),
+      ),
+      ListTile(
+        leading: const Icon(Icons.privacy_tip, color: Colors.blue),
+        title: const Text('Política de Privacidade'),
+        subtitle: const Text('Leia nossa Política de Privacidade'),
+        onTap: () => _abrirLink('https://raw.githubusercontent.com/JoaoPdr04/Prisma/refs/heads/main/docs/PRIVACIDADE.md'),
+      ),
+      ListTile(
+        leading: const Icon(Icons.email, color: Colors.orange),
+        title: const Text('Entrar em Contato/Relatar Problema'),
+        subtitle: const Text('jpfdo24@gmail.com'),
+        onTap: () => _abrirLink('mailto:jpfdo24@gmail.com'),
+      ),
+      ListTile(
+        leading: const Icon(Icons.email, color: Color.fromARGB(255, 255, 0, 0)),
+        title: const Text('Entrar em Contato/Relatar Problema'),
+        subtitle: const Text('ferreira.joao2@aluno.ifsp.edu.br'),
+        onTap: () => _abrirLink('mailto:ferreira.joao2@aluno.ifsp.edu.br'),
+      ),
+
+    ],
+  );
+}
+
   void _zoomIn() {
     final currentZoom = _mapController.camera.zoom;
     _mapController.move(_mapController.camera.center, currentZoom + 1);
@@ -258,23 +397,44 @@ Future<void> _setupInitialLocation() async {
     _mapController.move(_mapController.camera.center, currentZoom - 1);
   }
 
-  Future<void> _checkUserRole() async {
+// Função unificada que carrega TUDO (Auth + Firestore)
+  Future<void> _loadUserData() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      setState(() => _userRole = 'leitor');
-      return;
-    }
 
-    try {
-      final doc = await FirebaseFirestore.instance.collection('usuarios').doc(user.uid).get();
-      if (doc.exists) {
-        setState(() {
-          // Pega o cargo do banco. Se não tiver, assume 'leitor'.
-          _userRole = doc.data()?['cargo'] ?? 'leitor';
-        });
+    if (user != null) {
+      setState(() {
+        // 1. Carrega dados básicos do Google Auth
+        isVisitante = user.isAnonymous;
+        userName = user.displayName ?? "Usuário";
+        userEmail = user.email ?? "Sem email";
+        userPhotoUrl = user.photoURL;
+      });
+
+      // 2. Se não for visitante, busca o cargo no Firestore
+      if (!isVisitante) {
+        try {
+          final doc = await FirebaseFirestore.instance
+              .collection('usuarios')
+              .doc(user.uid)
+              .get();
+
+          if (doc.exists && mounted) {
+            setState(() {
+              // Atualiza a variável correta 'userRole'
+              userRole = doc.data()?['cargo'] ?? 'leitor';
+            });
+            print("Cargo carregado: $userRole"); // Debug
+          }
+        } catch (e) {
+          print("Erro ao buscar cargo: $e");
+        }
       }
-    } catch (e) {
-      print('Erro ao verificar cargo: $e');
+    } else {
+      // Se não tiver usuário, reseta tudo
+      setState(() {
+        userRole = 'leitor';
+        userName = null;
+      });
     }
   }
 
@@ -312,7 +472,7 @@ Future<void> _setupInitialLocation() async {
   }
 
   // --- MOSTRAR DETALHES (CORRIGIDO O TEXTO CORTADO) ---
-  void _showPointDetails(Map<String, dynamic> data, String docId) {
+void _showPointDetails(Map<String, dynamic> data, String docId,LatLng point) {
     final String colorHex = _descriptorsData[data['categoria']]?['cor'] ?? '#808080';
     final Color categoryColor = ColorUtils.fromHex(colorHex);
 
@@ -341,7 +501,7 @@ Future<void> _setupInitialLocation() async {
                   ),
                   const SizedBox(height: 12),
                   
-                  // CATEGORIA E SUBCATEGORIA (Com quebra de linha automática)
+                  // CATEGORIA
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -350,7 +510,6 @@ Future<void> _setupInitialLocation() async {
                         child: CircleAvatar(backgroundColor: categoryColor, radius: 8),
                       ),
                       const SizedBox(width: 10),
-                      // Flexible obriga o texto a quebrar se bater na borda
                       Flexible(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -358,13 +517,13 @@ Future<void> _setupInitialLocation() async {
                             Text(
                               data['categoria'] ?? 'Descritor não disponível',
                               style: const TextStyle(fontSize: 16, fontStyle: FontStyle.italic, color: Colors.grey),
-                              softWrap: true, // Quebra linha
+                              softWrap: true,
                             ),
                             if (data['subcategoria'] != null)
                               Text(
                                 "(${data['subcategoria']})",
                                 style: const TextStyle(fontSize: 14, color: Colors.blueGrey),
-                                softWrap: true, // Quebra linha
+                                softWrap: true,
                               ),
                           ],
                         ),
@@ -379,7 +538,27 @@ Future<void> _setupInitialLocation() async {
                     style: const TextStyle(fontSize: 16),
                   ),
                   const SizedBox(height: 24),
+
+                  // --- 1. BOTÃO DE ROTA (PARA TODO MUNDO) ---
+                  SizedBox(
+                    width: double.infinity,
+                    height: 50,
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.directions, color: Colors.white),
+                      label: const Text('Traçar Rota até aqui', style: TextStyle(color: Colors.white, fontSize: 16)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    onPressed: () {
+                        _abrirRotaNoGoogleMaps(point.latitude, point.longitude);
+                      }
+                    ),
+                  ),
                   
+                  const SizedBox(height: 15),
+
+                  // --- 2. BOTÕES DE ADMIN (SÓ SE TIVER PERMISSÃO) ---
                   if (_canAdd) 
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -402,7 +581,9 @@ Future<void> _setupInitialLocation() async {
                           },
                         ),
                       ],
-                    )
+                    ),
+                    
+                   // Fim dos botões
                 ],
               ),
             );
@@ -446,7 +627,10 @@ Future<void> _setupInitialLocation() async {
       context: context,
       delegate: MapSearchDelegate(
         points: _allLoadedPoints,
-        categoriesAndColors: simpleColors, // Passamos o mapa corrigido
+        categoriesAndColors: simpleColors,
+        onSearchOnline: (String query) {
+           _buscarEnderecoOnline(query);
+         } // Passamos o mapa corrigido
       ),
     );
 
@@ -459,8 +643,23 @@ Future<void> _setupInitialLocation() async {
         final latLng = LatLng(geoPoint.latitude, geoPoint.longitude);
         
         _mapController.move(latLng, 17.0);
-        _showPointDetails(data, result.id);
+        _showPointDetails(data, result.id, latLng);
       }
+    }
+  }
+
+  Future<void> _abrirRotaNoGoogleMaps(double lat, double long) async {
+    // O parâmetro "dir" diz ao Google que queremos direções (rota)
+    // O parâmetro "destination" é para onde vamos
+    // Se não passamos a origem, ele assume que é a "Minha Localização Atual"
+    final Uri url = Uri.parse('https://www.google.com/maps/dir/?api=1&destination=$lat,$long');
+
+    try {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Não foi possível abrir o mapa.')),
+      );
     }
   }
 
@@ -604,7 +803,7 @@ Future<void> _setupInitialLocation() async {
             tooltip: 'Recarregar Informações',
             onPressed: () async {
               // Recarrega o cargo do usuário
-              await _checkUserRole();              
+              await _loadUserData();           
               setState(() {}); // Força a tela a redesenhar
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Informações atualizadas!'), duration: Duration(seconds: 1)),
@@ -620,254 +819,249 @@ Future<void> _setupInitialLocation() async {
         ],
       ),
       
-      drawer: Drawer(
-        child: Column(
+drawer: Drawer(
+  child: ListView(
+    padding: EdgeInsets.zero, // Remove borda branca do topo
+    children: [
+
+      UserAccountsDrawerHeader(
+        decoration: const BoxDecoration(color: Colors.blue),
+        
+        // 1. FOTO DO PERFIL
+        currentAccountPicture: CircleAvatar(
+          backgroundColor: Colors.white,
+          backgroundImage: (userPhotoUrl != null && !isVisitante) 
+              ? NetworkImage(userPhotoUrl!) 
+              : null,
+          child: (userPhotoUrl == null || isVisitante)
+              ? const Icon(Icons.person, size: 40, color: Colors.blue)
+              : null,
+        ),
+
+        // 2. NOME
+        accountName: Text(
+          isVisitante ? "Visitante" : (userName ?? "Usuário"),
+          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+
+        // 3. EMAIL E CARGO (CORRIGIDO)
+        accountEmail: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // --- 1. CABEÇALHO ---
-            DrawerHeader(
-              decoration: const BoxDecoration(color: Colors.blue),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text('Menu', style: TextStyle(color: Colors.white, fontSize: 24)),
-                    // Mostra se é visitante no cabeçalho
-                    if (isVisitante)
-                      const Padding(
-                        padding: EdgeInsets.only(top: 8.0),
-                        child: Text("(Modo Visitante)", style: TextStyle(color: Colors.white70, fontSize: 14)),
-                      ),
-                  ],
+            Text(isVisitante ? "Modo de visualização" : (userEmail ?? "")),
+            
+            // Etiqueta amarela do cargo
+            Container(
+              margin: const EdgeInsets.only(top: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.black26, 
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                isVisitante ? "VISITANTE" : "CARGO: ${userRole.toUpperCase()}",
+                style: const TextStyle(
+                    color: Colors.yellowAccent, 
+                    fontWeight: FontWeight.bold, 
+                    fontSize: 10
                 ),
               ),
-            ),
-
-            // --- 2. LISTA DE FILTROS (Corpo do Menu) ---
-            Expanded(
-              child: ListView(
-                padding: EdgeInsets.zero,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                    child: Text('Exibir no Mapa', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700)),
-                  ),
-                  SwitchListTile(
-                    title: const Text('Locais'),
-                    secondary: const Icon(Icons.location_pin, color: Colors.red),
-                    value: _showNormalPoints,
-                    onChanged: (v) => setState(() => _showNormalPoints = v),
-                  ),
-                  SwitchListTile(
-                    title: const Text('Pontos Críticos'),
-                    secondary: const Icon(Icons.warning_rounded, color: Colors.orange),
-                    value: _showWarningPoints,
-                    onChanged: (v) => setState(() => _showWarningPoints = v),
-                  ),
-                  const Divider(),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                    child: Text('Filtrar Descritores', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700)),
-                  ),
-
-                  // Lógica do "Selecionar Todos"
-                  Builder(
-                    builder: (context) {
-                      bool isAllSelected = _descriptorsData.isNotEmpty && _descriptorsData.entries.every((entry) {
-                        final catName = entry.key;
-                        final List<String> allSubs = (entry.value['subs'] as List<dynamic>).map((e) => e.toString()).toList();
-                        final Set<String>? active = _activeSubFilters[catName];
-                        return active != null && active.length == allSubs.length;
-                      });
-
-                      bool isNoneSelected = _activeSubFilters.isEmpty || _activeSubFilters.values.every((set) => set.isEmpty);
-
-                      bool? checkboxState;
-                      if (isAllSelected) {
-                        checkboxState = true;
-                      } else if (isNoneSelected) {
-                        checkboxState = false;
-                      } else {
-                        checkboxState = null;
-                      }
-
-                      return CheckboxListTile(
-                        title: const Text("Selecionar Todos", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
-                        value: checkboxState,
-                        tristate: true,
-                        activeColor: Colors.blue,
-                        controlAffinity: ListTileControlAffinity.leading,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                        onChanged: (bool? value) {
-                          setState(() {
-                            if (isAllSelected) {
-                              _activeSubFilters = {};
-                            } else {
-                              Map<String, Set<String>> tempAll = {};
-                              _descriptorsData.forEach((key, val) {
-                                tempAll[key] = (val['subs'] as List<dynamic>).map((e) => e.toString()).toSet();
-                              });
-                              _activeSubFilters = tempAll;
-                            }
-                          });
-                        },
-                      );
-                    }
-                  ),
-                  const Divider(height: 1),
-
-                  // Lista de Descritores (ExpansionTiles)
-                  ...sortedDescriptorKeys.map((descName) {
-                    final descData = _descriptorsData[descName]!;
-                    final List<String> allSubs = descData['subs'];
-                    final Set<String> activeSubs = _activeSubFilters[descName] ?? {};
-                    final Color color = ColorUtils.fromHex(descData['cor']);
-
-                    bool allSelected = activeSubs.length == allSubs.length && allSubs.isNotEmpty;
-                    bool noneSelected = activeSubs.isEmpty;
-
-                    return ExpansionTile(
-                      leading: Checkbox(
-                        value: allSelected ? true : (noneSelected ? false : null),
-                        tristate: true,
-                        activeColor: color,
-                        onChanged: (bool? value) {
-                          setState(() {
-                            if (allSelected) {
-                              _activeSubFilters[descName] = {};
-                            } else {
-                              _activeSubFilters[descName] = allSubs.toSet();
-                            }
-                          });
-                        },
-                      ),
-                      title: Text(descName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                      childrenPadding: const EdgeInsets.only(left: 20),
-                      children: allSubs.map((subName) {
-                        return CheckboxListTile(
-                          title: Text(subName, style: const TextStyle(fontSize: 13)),
-                          value: activeSubs.contains(subName),
-                          dense: true,
-                          activeColor: color,
-                          onChanged: (bool? value) {
-                            setState(() {
-                              if (value == true) {
-                                _activeSubFilters[descName]!.add(subName);
-                              } else {
-                                _activeSubFilters[descName]!.remove(subName);
-                              }
-                            });
-                          },
-                        );
-                      }).toList(),
-                    );
-                  }).toList(),
-                ],
-              ),
-            ),
-
-            const Divider(thickness: 2),
-
-            // --- 3. RODAPÉ (Ações de Conta) ---
-            // AQUI ESTÁ A LÓGICA DO VISITANTE QUE VOCÊ PEDIU
-            Column(
-              children: [
-                
-                // CASO 1: VISITANTE -> Mostra APENAS botão de Login
-                if (isVisitante)
-                  ListTile(
-                    leading: const Icon(Icons.login, color: Colors.green),
-                    title: const Text('Fazer Login / Criar Conta', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
-                    onTap: () async {
-                      // Sai do anônimo e vai pra tela de login
-                      await FirebaseAuth.instance.signOut();
-                      if (context.mounted) {
-                         Navigator.pop(context); // Fecha menu
-                         // O StreamBuilder no main.dart fará o resto, mas por garantia:
-                         Navigator.pushReplacement(
-                            context, 
-                            MaterialPageRoute(builder: (context) => const LoginScreen())
-                         );
-                      }
-                    },
-                  ),
-
-                // CASO 2: LOGADO (Leitor, Admin, Colaborador) -> Mostra o menu completo
-                if (!isVisitante) ...[
-                  
-                  // Botão: Adicionar Ponto (Só se tiver permissão)
-                  if (_canAdd)
-                    ListTile(
-                      leading: const Icon(Icons.add_location_alt),
-                      title: const Text('Adicionar Ponto'),
-                      onTap: () {
-                        final LatLng center = _mapController.camera.center;
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => AddPointScreen(initialCenter: center),
-                          ),
-                        );
-                      },
-                    ),
-
-                  // Botão: Solicitações (Só Admin)
-                  if (_isAdmin)
-                    ListTile(
-                      leading: const Icon(Icons.notifications_active, color: Colors.orange),
-                      title: const Text('Solicitações de Acesso'),
-                      onTap: () {
-                        Navigator.pop(context);
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => AdminRequestsScreen()),
-                        );
-                      },
-                    ),
-
-                  // Botão: Quero ser Colaborador (Só Leitor)
-                  if (_userRole == 'leitor')
-                    ListTile(
-                      leading: const Icon(Icons.handshake), // ou verified_user
-                      title: const Text('Quero ser um colaborador'),
-                      onTap: () {
-                        Navigator.pop(context);
-                        _showRequestAccessDialog();
-                      },
-                    ),
-
-                  const Divider(),
-
-                  // Botão: Sair
-                  ListTile(
-                    leading: const Icon(Icons.logout, color: Colors.red),
-                    title: const Text('Sair da Conta'),
-                    onTap: () async {
-                      try {
-                        await GoogleSignIn().signOut();
-                        await GoogleSignIn().disconnect();
-                      } catch (e) {
-                        // Ignora
-                      }
-                      await FirebaseAuth.instance.signOut();
-                      if (context.mounted) {
-                        setState(() { _userRole = 'leitor'; });
-                        Navigator.pop(context);
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (context) => const LoginScreen()),
-                        );
-                      }
-                    },
-                  ),
-                ], // Fim do if (!isVisitante)
-                
-                const SizedBox(height: 20),
-              ],
             ),
           ],
         ),
       ),
+
+      // 2. SWITCHES (Locais e Críticos)
+      Padding(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+        child: Text('Exibir no Mapa', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700)),
+      ),
+      SwitchListTile(
+        title: const Text('Locais'),
+        secondary: const Icon(Icons.location_pin, color: Colors.red),
+        value: _showNormalPoints,
+        onChanged: (v) => setState(() => _showNormalPoints = v),
+      ),
+      SwitchListTile(
+        title: const Text('Pontos Críticos'),
+        secondary: const Icon(Icons.warning_rounded, color: Colors.orange),
+        value: _showWarningPoints,
+        onChanged: (v) => setState(() => _showWarningPoints = v),
+      ),
+      
+      const Divider(),
+
+      // 3. FILTROS (Lógica complexa)
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+        child: Text('Filtrar Descritores', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700)),
+      ),
+
+      // Checkbox "Selecionar Todos"
+      Builder(
+        builder: (context) {
+          bool isAllSelected = _descriptorsData.isNotEmpty && _descriptorsData.entries.every((entry) {
+            final catName = entry.key;
+            final List<String> allSubs = (entry.value['subs'] as List<dynamic>).map((e) => e.toString()).toList();
+            final Set<String>? active = _activeSubFilters[catName];
+            return active != null && active.length == allSubs.length;
+          });
+
+          bool isNoneSelected = _activeSubFilters.isEmpty || _activeSubFilters.values.every((set) => set.isEmpty);
+
+          bool? checkboxState;
+          if (isAllSelected) checkboxState = true;
+          else if (isNoneSelected) checkboxState = false;
+          else checkboxState = null;
+
+          return CheckboxListTile(
+            title: const Text("Selecionar Todos", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
+            value: checkboxState,
+            tristate: true,
+            activeColor: Colors.blue,
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+            onChanged: (bool? value) {
+              setState(() {
+                if (isAllSelected) {
+                  _activeSubFilters = {};
+                } else {
+                  Map<String, Set<String>> tempAll = {};
+                  _descriptorsData.forEach((key, val) {
+                    tempAll[key] = (val['subs'] as List<dynamic>).map((e) => e.toString()).toSet();
+                  });
+                  _activeSubFilters = tempAll;
+                }
+              });
+            },
+          );
+        }
+      ),
+      
+      const Divider(height: 1),
+
+      // Lista Expansível de Descritores
+      // Note que aqui usamos o spread operator (...) direto na lista principal
+      ...sortedDescriptorKeys.map((descName) {
+        final descData = _descriptorsData[descName]!;
+        final List<String> allSubs = (descData['subs'] as List<dynamic>).map((e) => e.toString()).toList();
+        final Set<String> activeSubs = _activeSubFilters[descName] ?? {};
+        final Color color = ColorUtils.fromHex(descData['cor']);
+
+        bool allSelected = activeSubs.length == allSubs.length && allSubs.isNotEmpty;
+        bool noneSelected = activeSubs.isEmpty;
+
+        return ExpansionTile(
+          leading: Checkbox(
+            value: allSelected ? true : (noneSelected ? false : null),
+            tristate: true,
+            activeColor: color,
+            onChanged: (bool? value) {
+              setState(() {
+                if (allSelected) {
+                  _activeSubFilters[descName] = {};
+                } else {
+                  _activeSubFilters[descName] = allSubs.toSet();
+                }
+              });
+            },
+          ),
+          title: Text(descName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+          childrenPadding: const EdgeInsets.only(left: 20),
+          children: allSubs.map((subName) {
+            return CheckboxListTile(
+              title: Text(subName, style: const TextStyle(fontSize: 13)),
+              value: activeSubs.contains(subName),
+              dense: true,
+              activeColor: color,
+              onChanged: (bool? value) {
+                setState(() {
+                  if (value == true) {
+                    if (_activeSubFilters[descName] == null) _activeSubFilters[descName] = {};
+                    _activeSubFilters[descName]!.add(subName);
+                  } else {
+                    _activeSubFilters[descName]?.remove(subName);
+                  }
+                });
+              },
+            );
+          }).toList(),
+        );
+      }),
+
+      // 4. RODAPÉ (Outras opções e Botões)
+      // Eles entram aqui direto, sem Spacer ou Expanded, para rolar junto
+      const Divider(thickness: 2),
+      const Padding(
+        padding: EdgeInsets.only(left: 16, top: 10, bottom: 5),
+        child: Text("Outras Opções", style: TextStyle(color: Colors.grey, fontSize: 12)),
+      ),
+
+      ListTile(
+        leading: const Icon(Icons.info_outline, color: Colors.blueGrey),
+        title: const Text('Sobre o App'),
+        onTap: () {
+          Navigator.pop(context);
+          _showSobreApp();
+        },
+      ),
+
+      if (isVisitante) 
+        ListTile(
+          leading: const Icon(Icons.login, color: Colors.green),
+          title: const Text('Fazer Login'),
+          onTap: () {
+             Navigator.pop(context);
+             Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
+          },
+        )
+      else ...[
+        if (userRole == 'leitor')
+          ListTile(
+            leading: const Icon(Icons.volunteer_activism, color: Colors.orange),
+            title: const Text('Quero ser Colaborador'),
+            onTap: () {
+              Navigator.pop(context); 
+                    // 2. Chama a função que estava "desligada" (unused)
+                    print("Botão clicado! Abrindo diálogo..."); // Debug pra você ver no console
+                    _showRequestAccessDialog();
+            },
+          ),
+
+          // --- ÁREA DO ADMINISTRADOR ---
+              if (userRole == 'admin') ...[
+                const Divider(), // Uma linha para separar
+                ListTile(
+                  leading: const Icon(Icons.admin_panel_settings, color: Colors.purple),
+                  title: const Text('Gerenciar Colaboradores'),
+                  subtitle: const Text('Aprovar/Rejeitar pedidos'),
+                  onTap: () {
+                    Navigator.pop(context); // Fecha o menu
+                    
+                    // Navega para a tela de administração
+                    // Certifique-se de importar o arquivo dessa tela lá no topo!
+                    Navigator.push(context, MaterialPageRoute(builder: (context) => const AdminRequestsScreen()));
+                  },
+                ),
+              ],
+
+
+        ListTile(
+          leading: const Icon(Icons.exit_to_app, color: Colors.red),
+          title: const Text('Sair'),
+          onTap: () async {
+            await FirebaseAuth.instance.signOut();
+            if (mounted) {
+               Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
+            }
+          },
+        ),
+      ],
+      
+      const SizedBox(height: 20), // Espaço final
+    ],
+  ),
+),
 
       body: StreamBuilder<QuerySnapshot>(
         stream: pointsQuery.snapshots(),
@@ -1009,7 +1203,7 @@ Future<void> _setupInitialLocation() async {
             // ---------------------------
 
             child: GestureDetector(
-              onTap: () => _showPointDetails(data, doc.id),
+              onTap: () => _showPointDetails(data, doc.id, latLng),
               child: Stack(
                 alignment: Alignment.center,
                 clipBehavior: Clip.none, 
@@ -1173,8 +1367,9 @@ Future<void> _setupInitialLocation() async {
 class MapSearchDelegate extends SearchDelegate<dynamic> {
   final List<QueryDocumentSnapshot> points;
   final Map<String, String> categoriesAndColors; // Variável corrigida
+  final Function(String) onSearchOnline;
 
-  MapSearchDelegate({required this.points, required this.categoriesAndColors});
+  MapSearchDelegate({required this.onSearchOnline,required this.points, required this.categoriesAndColors});
 
   @override
   List<Widget>? buildActions(BuildContext context) {
@@ -1309,8 +1504,11 @@ class MapSearchDelegate extends SearchDelegate<dynamic> {
         if (index == suggestions.length) {
           return ListTile(
             leading: const Icon(Icons.search, color: Colors.blue),
-            title: Text('Buscar endereço "$query" no mapa'),
-            onTap: () => showResults(context),
+            title: Text('Buscar endereço "$query" na web'),
+            onTap: () {
+              close(context, null); // 1. Fecha a barra de pesquisa
+              onSearchOnline(query);
+            }
           );
         }
         final item = suggestions[index];
