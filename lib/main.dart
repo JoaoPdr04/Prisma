@@ -124,6 +124,30 @@ class _MapScreenState extends State<MapScreen> {
 
   StreamSubscription<Position>? _positionStreamSubscription;
 
+  bool _isNovaVersaoMaior(String remote, String local) {
+    try {
+      // Remove sufixos como "+1" ou "-beta" para não dar erro
+      String cleanRemote = remote.split('+')[0].split('-')[0];
+      String cleanLocal = local.split('+')[0].split('-')[0];
+
+      List<int> r = cleanRemote.split('.').map(int.parse).toList();
+      List<int> l = cleanLocal.split('.').map(int.parse).toList();
+
+      // Garante que ambos tenham 3 partes (ex: 1.0 vira 1.0.0)
+      while (r.length < 3) r.add(0);
+      while (l.length < 3) l.add(0);
+
+      // Compara: Maior, Menor e Correção
+      for (int i = 0; i < 3; i++) {
+        if (r[i] > l[i]) return true;  // A remota é maior! (Atualizar)
+        if (r[i] < l[i]) return false; // A remota é menor (Não atualizar)
+      }
+    } catch (e) {
+      print("Erro ao comparar versões: $e");
+    }
+    return false; // Se forem iguais ou der erro, não atualiza
+  }
+
   Future<void> _checkUpdate() async {
     // IMPORTANTE: Use o seu link RAW do GitHub aqui
     final url = Uri.parse("https://raw.githubusercontent.com/JoaoPdr04/Prisma/main/version.json");
@@ -144,9 +168,9 @@ try {
         String remoteVersion = data['latest_version'];
         
         // 3. Compara: Se a versão da internet for diferente da local
-        if (remoteVersion != localVersion) {
+        if (_isNovaVersaoMaior(remoteVersion, localVersion)) {
            print("Nova versão encontrada: $remoteVersion");
-          _showUpdateDialog(remoteVersion, data['download_url']);
+          _showUpdateDialog(localVersion, remoteVersion, data['download_url']);
         } else {
            print("O App já está atualizado.");
         }
@@ -201,14 +225,25 @@ try {
     }
   }
 
-  void _showUpdateDialog(String newVersion, String url) {
+void _showUpdateDialog(String currentVersion, String newVersion, String url) { // <--- Adicionei currentVersion
     if (!mounted) return;
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         title: const Text("Nova Atualização! 🚀"),
-        content: Text("Uma nova versão ($newVersion) do Prisma está disponível. Deseja baixar agora?"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Uma nova versão ($newVersion) do Prisma está disponível."),
+            const SizedBox(height: 10),
+            // 👇 ISSO AQUI VAI TE CONTAR A VERDADE 👇
+            Text("Sua versão atual: $currentVersion", 
+              style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -226,7 +261,7 @@ try {
         ],
       ),
     );
-  }
+}
 
   @override
   void initState() {
