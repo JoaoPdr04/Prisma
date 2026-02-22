@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/gestures.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -18,6 +20,16 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   Future<void> _registerUser() async {
     // 1. VALIDAÇÕES BÁSICAS
+    if (!_concordouComTermos) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Por favor, aceite os Termos de Uso para continuar.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     if (_nameController.text.trim().isEmpty ||
         _emailController.text.trim().isEmpty ||
         _passwordController.text.trim().isEmpty) {
@@ -117,6 +129,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
   }
 
+  bool _concordouComTermos = false;
+
+  final String _urlTermos = 'https://raw.githubusercontent.com/JoaoPdr04/Prisma/refs/heads/main/docs/TERMOS.md';
+  final String _urlPrivacidade = 'https://raw.githubusercontent.com/JoaoPdr04/Prisma/refs/heads/main/docs/PRIVACIDADE.md';
+
+  Future<void> _abrirLink(String url) async {
+    final Uri uri = Uri.parse(url);
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      print('Não foi possível abrir o link: $url');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -164,6 +188,61 @@ class _SignUpScreenState extends State<SignUpScreen> {
               if (_isLoading)
                 const Center(child: CircularProgressIndicator())
               else
+                // --- INÍCIO DO BLOCO DE TERMOS ---
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                height: 24, 
+                width: 24,
+                child: Checkbox(
+                  value: _concordouComTermos,
+                  activeColor: Colors.blue, // Cor quando marcado
+                  onChanged: (bool? valor) {
+                    setState(() {
+                      _concordouComTermos = valor ?? false;
+                    });
+                  },
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: RichText(
+                  text: TextSpan(
+                    style: const TextStyle(color: Colors.black, fontSize: 14),
+                    children: [
+                      const TextSpan(text: 'Li e concordo com os '),
+                      TextSpan(
+                        text: 'Termos de Uso',
+                        style: const TextStyle(
+                          color: Colors.blue, 
+                          fontWeight: FontWeight.bold, 
+                          decoration: TextDecoration.underline
+                        ),
+                        recognizer: TapGestureRecognizer()
+                          ..onTap = () => _abrirLink(_urlTermos),
+                      ),
+                      const TextSpan(text: ' e a '),
+                      TextSpan(
+                        text: 'Política de Privacidade',
+                        style: const TextStyle(
+                          color: Colors.blue, 
+                          fontWeight: FontWeight.bold, 
+                          decoration: TextDecoration.underline
+                        ),
+                        recognizer: TapGestureRecognizer()
+                          ..onTap = () => _abrirLink(_urlPrivacidade),
+                      ),
+                      const TextSpan(text: '.'),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          // --- FIM DO BLOCO DE TERMOS ---
+          
                 ElevatedButton(
                   onPressed: _registerUser,
                   style: ElevatedButton.styleFrom(

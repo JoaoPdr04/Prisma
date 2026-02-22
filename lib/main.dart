@@ -20,6 +20,7 @@ import 'package:url_launcher/url_launcher.dart';
 import 'admin_requests_screen.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'notifications_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 void main() async {
   print('--- APLICATIVO INICIADO ---');
@@ -48,7 +49,24 @@ class MyApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const MapScreen(),
+      home: StreamBuilder<User?>(
+  stream: FirebaseAuth.instance.authStateChanges(), // O "Ouvido" do Firebase
+  builder: (context, snapshot) {
+    
+    // 1. Se estiver carregando (verificando), mostra uma bolinha girando
+    if (snapshot.connectionState == ConnectionState.waiting) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    // 2. Se tem dados (usuário logado), vai direto para o Mapa
+    if (snapshot.hasData) {
+      return const MapScreen(); 
+    }
+
+    // 3. Se não tem dados (ninguém logado), manda para o Login
+    return const LoginScreen(); 
+  },
+),
     );
   }
 }
@@ -562,6 +580,9 @@ Future<void> _setupInitialLocation() async {
     Query pointsQuery = FirebaseFirestore.instance.collection('pontos_interesse');
     var sortedDescriptorKeys = _descriptorsData.keys.toList()..sort();
 
+    final user = FirebaseAuth.instance.currentUser;
+    final bool isVisitante = user?.isAnonymous ?? false;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Prisma'),
@@ -598,13 +619,30 @@ Future<void> _setupInitialLocation() async {
           ),
         ],
       ),
+      
       drawer: Drawer(
         child: Column(
           children: [
-            const DrawerHeader(
-              decoration: BoxDecoration(color: Colors.blue),
-              child: Center(child: Text('Menu', style: TextStyle(color: Colors.white, fontSize: 24))),
+            // --- 1. CABEÇALHO ---
+            DrawerHeader(
+              decoration: const BoxDecoration(color: Colors.blue),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Text('Menu', style: TextStyle(color: Colors.white, fontSize: 24)),
+                    // Mostra se é visitante no cabeçalho
+                    if (isVisitante)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 8.0),
+                        child: Text("(Modo Visitante)", style: TextStyle(color: Colors.white70, fontSize: 14)),
+                      ),
+                  ],
+                ),
+              ),
             ),
+
+            // --- 2. LISTA DE FILTROS (Corpo do Menu) ---
             Expanded(
               child: ListView(
                 padding: EdgeInsets.zero,
@@ -630,47 +668,37 @@ Future<void> _setupInitialLocation() async {
                     padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
                     child: Text('Filtrar Descritores', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700)),
                   ),
-                  
-                 Builder(
+
+                  // Lógica do "Selecionar Todos"
+                  Builder(
                     builder: (context) {
-                      // 1. Verifica se TUDO está marcado
                       bool isAllSelected = _descriptorsData.isNotEmpty && _descriptorsData.entries.every((entry) {
                         final catName = entry.key;
                         final List<String> allSubs = (entry.value['subs'] as List<dynamic>).map((e) => e.toString()).toList();
                         final Set<String>? active = _activeSubFilters[catName];
-                        // Retorna true só se a lista ativa for igual à lista total
                         return active != null && active.length == allSubs.length;
                       });
 
-                      // 2. Verifica se NADA está marcado (para visual)
                       bool isNoneSelected = _activeSubFilters.isEmpty || _activeSubFilters.values.every((set) => set.isEmpty);
 
-                      // Lógica visual do botão:
-                      // True (Check) = Tudo marcado
-                      // False (Vazio) = Nada marcado
-                      // Null (Tracinho) = Alguns marcados
                       bool? checkboxState;
                       if (isAllSelected) {
                         checkboxState = true;
                       } else if (isNoneSelected) {
                         checkboxState = false;
                       } else {
-                        checkboxState = null; // Mostra o "tracinho" (estado misto)
+                        checkboxState = null;
                       }
 
                       return CheckboxListTile(
                         title: const Text("Selecionar Todos", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black)),
                         value: checkboxState,
-                        tristate: true, // Permite o estado "meio termo" (tracinho)
+                        tristate: true,
                         activeColor: Colors.blue,
                         controlAffinity: ListTileControlAffinity.leading,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                        
                         onChanged: (bool? value) {
                           setState(() {
-                            // AQUI ESTÁ A CORREÇÃO DO BUG:
-                            // Se já estava tudo selecionado, a gente LIMPA.
-                            // Qualquer outro caso (vazio ou misto), a gente ENCHE TUDO.
                             if (isAllSelected) {
                               _activeSubFilters = {};
                             } else {
@@ -687,32 +715,26 @@ Future<void> _setupInitialLocation() async {
                   ),
                   const Divider(height: 1),
 
+                  // Lista de Descritores (ExpansionTiles)
                   ...sortedDescriptorKeys.map((descName) {
                     final descData = _descriptorsData[descName]!;
                     final List<String> allSubs = descData['subs'];
                     final Set<String> activeSubs = _activeSubFilters[descName] ?? {};
                     final Color color = ColorUtils.fromHex(descData['cor']);
 
-                    // Lógica para saber o estado atual
                     bool allSelected = activeSubs.length == allSubs.length && allSubs.isNotEmpty;
                     bool noneSelected = activeSubs.isEmpty;
 
                     return ExpansionTile(
                       leading: Checkbox(
-                        // Define o visual: Cheio, Vazio ou Tracinho (-)
                         value: allSelected ? true : (noneSelected ? false : null),
-                        tristate: true, // Importante para mostrar o "tracinho" quando parcial
+                        tristate: true,
                         activeColor: color,
-                        
-                        // --- CORREÇÃO AQUI ---
                         onChanged: (bool? value) {
                           setState(() {
-                            // Lógica baseada no ESTADO ATUAL, não no clique
                             if (allSelected) {
-                              // Se já estava tudo marcado, LIMPA
                               _activeSubFilters[descName] = {};
                             } else {
-                              // Se estava vazio ou parcial, ENCHE TUDO
                               _activeSubFilters[descName] = allSubs.toSet();
                             }
                           });
@@ -739,137 +761,114 @@ Future<void> _setupInitialLocation() async {
                       }).toList(),
                     );
                   }).toList(),
-
-                  // ... (Acima disso estão os Checkbox dos filtros) ...
-                  
-                  const SizedBox(height: 20),
-                  const Divider(thickness: 2), // Uma linha mais grossa para separar
-                  
-                  // --- LÓGICA DE BOTÕES DO RODAPÉ ---
-                  Builder(
-                    builder: (context) {
-                      final user = FirebaseAuth.instance.currentUser;
-
-                      // 1. SE FOR VISITANTE (Não logado)
-                      if (user == null) {
-                        return ListTile(
-                          leading: const Icon(Icons.login, color: Colors.green),
-                          title: const Text('Fazer Login / Criar Conta', style: TextStyle(fontWeight: FontWeight.bold)),
-                          onTap: () {
-                            // Fecha o menu e vai para a tela de login
-                            Navigator.pop(context); 
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(builder: (context) => const LoginScreen()),
-                            );
-                          },
-                        );
-                      }
-
-                      // 2. SE ESTIVER LOGADO (Admin, Colaborador ou Leitor)
-                      return Column(
-                        children: [
-                          // Botão: Adicionar Ponto (Só Admin/Colaborador)
-                          if (_canAdd)
-                            ListTile(
-                              leading: const Icon(Icons.add_location_alt),
-                              title: const Text('Adicionar Ponto'),
-                              onTap: () {
-                                final LatLng center = _mapController.camera.center;
-                                Navigator.pop(context);
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => AddPointScreen(initialCenter: center),
-                                  ),
-                                );
-                              },
-                            ),
-
-                          // Botão: Gerenciar Descritores (Só Admin)
-                          if (_isAdmin)
-                            ListTile(
-                              leading: const Icon(Icons.category),
-                              title: const Text('Gerenciar Descritores'),
-                              onTap: () {
-                                Navigator.pop(context);
-                                // Adicione aqui a navegação para tela de descritores se tiver
-                              },
-                            ),
-
-                            // --- NOVO BOTÃO: Solicitações (Só Admin) ---
-                          if (_isAdmin)
-                            ListTile(
-                              leading: const Icon(Icons.notifications_active, color: Colors.orange),
-                              title: const Text('Solicitações de Acesso'),
-                              onTap: () {
-                                print("CLICOU NO BOTÃO DE SOLICITAÇÕES"); // <--- Adicione isso
-
-                                Navigator.pop(context);
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => AdminRequestsScreen()),
-                                );
-                              },
-                            ),
-
-                          // Botão: Quero ser Colaborador (Só Leitor Logado)
-                          if (_userRole == 'leitor')
-                            ListTile(
-                              leading: const Icon(Icons.verified_user, color: Colors.blueGrey),
-                              title: const Text('Quero ser Colaborador'),
-                              onTap: () {
-                                Navigator.pop(context);
-                                _showRequestAccessDialog();
-                              },
-                            ),
-
-                          const Divider(),
-
-                          // Botão: Sair (Logout)
-                          ListTile(
-                            leading: const Icon(Icons.exit_to_app, color: Colors.red),
-                            title: const Text('Sair da Conta'),
-                            onTap: () async {
-                              // 1. Desconecta do Google (Isso força a escolha de conta na próxima vez)
-                              try {
-                                await GoogleSignIn().signOut();
-                                await GoogleSignIn().disconnect(); // Força extra para limpar o cache
-                              } catch (e) {
-                                // Ignora erros se não estiver logado com Google
-                              }
-
-                              // 2. Sai do Firebase
-                              await FirebaseAuth.instance.signOut();
-
-                              if (context.mounted) {
-                                // 3. Reseta permissões locais e volta pro Login
-                                setState(() {
-                                   _userRole = 'leitor'; 
-                                });
-                                Navigator.pop(context); // Fecha o menu
-                                
-                                // Vai para a tela de login
-                                Navigator.pushReplacement(
-                                  context,
-                                  MaterialPageRoute(builder: (context) => const LoginScreen()),
-                                );
-                              }
-                            },
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                  
-                  const SizedBox(height: 20),
-                  // Fim do Drawer
                 ],
               ),
+            ),
+
+            const Divider(thickness: 2),
+
+            // --- 3. RODAPÉ (Ações de Conta) ---
+            // AQUI ESTÁ A LÓGICA DO VISITANTE QUE VOCÊ PEDIU
+            Column(
+              children: [
+                
+                // CASO 1: VISITANTE -> Mostra APENAS botão de Login
+                if (isVisitante)
+                  ListTile(
+                    leading: const Icon(Icons.login, color: Colors.green),
+                    title: const Text('Fazer Login / Criar Conta', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                    onTap: () async {
+                      // Sai do anônimo e vai pra tela de login
+                      await FirebaseAuth.instance.signOut();
+                      if (context.mounted) {
+                         Navigator.pop(context); // Fecha menu
+                         // O StreamBuilder no main.dart fará o resto, mas por garantia:
+                         Navigator.pushReplacement(
+                            context, 
+                            MaterialPageRoute(builder: (context) => const LoginScreen())
+                         );
+                      }
+                    },
+                  ),
+
+                // CASO 2: LOGADO (Leitor, Admin, Colaborador) -> Mostra o menu completo
+                if (!isVisitante) ...[
+                  
+                  // Botão: Adicionar Ponto (Só se tiver permissão)
+                  if (_canAdd)
+                    ListTile(
+                      leading: const Icon(Icons.add_location_alt),
+                      title: const Text('Adicionar Ponto'),
+                      onTap: () {
+                        final LatLng center = _mapController.camera.center;
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => AddPointScreen(initialCenter: center),
+                          ),
+                        );
+                      },
+                    ),
+
+                  // Botão: Solicitações (Só Admin)
+                  if (_isAdmin)
+                    ListTile(
+                      leading: const Icon(Icons.notifications_active, color: Colors.orange),
+                      title: const Text('Solicitações de Acesso'),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => AdminRequestsScreen()),
+                        );
+                      },
+                    ),
+
+                  // Botão: Quero ser Colaborador (Só Leitor)
+                  if (_userRole == 'leitor')
+                    ListTile(
+                      leading: const Icon(Icons.handshake), // ou verified_user
+                      title: const Text('Quero ser um colaborador'),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _showRequestAccessDialog();
+                      },
+                    ),
+
+                  const Divider(),
+
+                  // Botão: Sair
+                  ListTile(
+                    leading: const Icon(Icons.logout, color: Colors.red),
+                    title: const Text('Sair da Conta'),
+                    onTap: () async {
+                      try {
+                        await GoogleSignIn().signOut();
+                        await GoogleSignIn().disconnect();
+                      } catch (e) {
+                        // Ignora
+                      }
+                      await FirebaseAuth.instance.signOut();
+                      if (context.mounted) {
+                        setState(() { _userRole = 'leitor'; });
+                        Navigator.pop(context);
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (context) => const LoginScreen()),
+                        );
+                      }
+                    },
+                  ),
+                ], // Fim do if (!isVisitante)
+                
+                const SizedBox(height: 20),
+              ],
             ),
           ],
         ),
       ),
+
       body: StreamBuilder<QuerySnapshot>(
         stream: pointsQuery.snapshots(),
         builder: (context, snapshot) {
@@ -1000,56 +999,58 @@ Future<void> _setupInitialLocation() async {
             }
 
             return Marker(
-              point: latLng,
-              width: 50, 
-              height: 50,
-              alignment: Alignment.center,
-              
-              rotate: false,
+            point: latLng,
+            width: 50, 
+            height: 50,
+            
+            // --- O SEGREDO ESTÁ AQUI ---
+            rotate: true, // false = Fica em pé (Norte da Tela). true = Gira com o mapa.
+            alignment: Alignment.center, // Garante que o ícone gire sobre o próprio eixo
+            // ---------------------------
 
-              child: GestureDetector(
-                onTap: () => _showPointDetails(data, doc.id),
-                child: Stack(
-                  alignment: Alignment.center,
-                  clipBehavior: Clip.none, 
-                  children: [
-                    // O ÍCONE (Centralizado e Ajustado)
-                    Transform.translate(
-                      offset: const Offset(0, -22), 
-                      child: Tooltip(
-                        message: data['nome'] ?? 'Sem nome',
-                        preferBelow: false,
-                        child: markerWidget,
-                      ),
+            child: GestureDetector(
+              onTap: () => _showPointDetails(data, doc.id),
+              child: Stack(
+                alignment: Alignment.center,
+                clipBehavior: Clip.none, 
+                children: [
+                  // O ÍCONE
+                  Transform.translate(
+                    offset: const Offset(0, -22), // Levanta o ícone para a ponta tocar no local
+                    child: Tooltip(
+                      message: data['nome'] ?? 'Sem nome',
+                      preferBelow: false,
+                      child: markerWidget,
                     ),
+                  ),
 
-                    // O TEXTO
-                    if (showLabel)
-                      Positioned(
-                        top: -50, 
-                        child: Container(
-                          constraints: const BoxConstraints(maxWidth: 200), 
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.9),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: Colors.grey.shade300),
-                            boxShadow: [const BoxShadow(blurRadius: 2, color: Colors.black26)]
-                          ),
-                          child: Text(
-                            data['nome'] ?? '',
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87),
-                            textAlign: TextAlign.center,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                  // O TEXTO (BALÃOZINHO)
+                  if (showLabel)
+                    Positioned(
+                      top: -50, 
+                      child: Container(
+                        constraints: const BoxConstraints(maxWidth: 200), 
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade300),
+                          boxShadow: [const BoxShadow(blurRadius: 2, color: Colors.black26)]
+                        ),
+                        child: Text(
+                          data['nome'] ?? '',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.black87),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
-            );
-          }).toList();
+            ),
+          );
+        }).toList();
 
           return _buildMap(markers);
         },
@@ -1099,7 +1100,13 @@ Future<void> _setupInitialLocation() async {
     List<Marker> allMarkers = [...markers];
     if (_userCurrentLocation != null) {
       allMarkers.add(Marker(
-        point: _userCurrentLocation!, width: 40, height: 40,
+        point: _userCurrentLocation!, 
+        width: 40, 
+        height: 40,
+        
+        // 👇 ADICIONE ESTA LINHA AQUI 👇
+        rotate: true, 
+        
         child: const Icon(Icons.person_pin_circle, color: Colors.blue, size: 40),
       ));
     }
@@ -1128,17 +1135,34 @@ Future<void> _setupInitialLocation() async {
           keepBuffer: 5,
         ),
 
-        RichAttributionWidget(
-        attributions: [
-        TextSourceAttribution(
-          'OpenStreetMap contributors',
-          onTap: () => launchUrl(Uri.parse('https://openstreetmap.org/copyright')), // Requer import do url_launcher
-        ),
+          MarkerLayer(markers: allMarkers),
       ],
-    ),
 
-        MarkerLayer(markers: allMarkers),
-      ],
+      nonRotatedChildren: [
+    Align(
+      alignment: Alignment.bottomLeft, // Fica no canto direito inferior
+      child: Container(
+        margin: const EdgeInsets.all(5), // Um espacinho da borda
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.7), // Fundo branco meio transparente (igual Leaflet)
+          borderRadius: BorderRadius.circular(4),
+        ),
+        child: GestureDetector(
+          // Mantemos o link clicável para cumprir a regra
+          onTap: () => launchUrl(Uri.parse('https://openstreetmap.org/copyright')),
+          child: const Text(
+            '© OpenStreetMap contributors',
+            style: TextStyle(
+              fontSize: 12, // Letra pequena e discreta
+              color: Colors.blue, // Azul para indicar que é um link
+              decoration: TextDecoration.underline, // Sublinhado opcional
+              ),
+            ),
+          ),
+        ),
+      ),
+     ],
     );
   }
 }
