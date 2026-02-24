@@ -24,11 +24,9 @@ Ao enviar conteúdo (fotos, descrições, locais) para o Prisma, você declara q
 * **Aplicativo:** O design, código-fonte e funcionalidades do Prisma são de propriedade exclusiva dos desenvolvedores.
 * **Dados do Mapa:** O mapa base utiliza dados do **OpenStreetMap®**, licenciados sob a *Open Data Commons Open Database License* (ODbL). A cartografia é licenciada sob *CC BY-SA 2.0*. © Contribuidores do OpenStreetMap.
 
-## 4. Conduta e Moderação
+## 4. Conduta
 
-## 4. Conduta, Moderação e Responsabilidades
-
-### 4.1. Deveres do Usuário
+### 4.1. Responsabilidades do Usuário
 O usuário compromete-se a utilizar o aplicativo de forma ética. É estritamente proibido:
 * Cadastrar informações falsas, imprecisas ou enganosas.
 * Utilizar linguagem ofensiva, discriminatória ou de discurso de ódio nas descrições.
