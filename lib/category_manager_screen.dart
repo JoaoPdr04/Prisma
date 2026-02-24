@@ -6,10 +6,10 @@ class CategoryManagerScreen extends StatefulWidget {
   const CategoryManagerScreen({super.key});
 
   @override
-  State<CategoryManagerScreen> createState() => _CategoryManagerScreenState();
+  State<CategoryManagerScreen> createState() => CategoryManagerScreenState();
 }
 
-class _CategoryManagerScreenState extends State<CategoryManagerScreen> {
+class CategoryManagerScreenState extends State<CategoryManagerScreen> {
   final CollectionReference _descriptorsCollection =
       FirebaseFirestore.instance.collection('descritores');
 

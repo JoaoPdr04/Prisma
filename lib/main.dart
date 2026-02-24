@@ -279,6 +279,72 @@ void _showUpdateDialog(String currentVersion, String newVersion, String url) { /
     super.dispose();
   }
 
+  void _confirmarSaida(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: const Text("Fazer logout do Prisma?"),
+        content: const Text("Deseja realmente encerrar sua sessão atual?"),
+        actions: [
+          // Botão para desistir
+          TextButton(
+            child: const Text("Cancelar"),
+            onPressed: () => Navigator.pop(context),
+          ),
+          // Botão para confirmar a saída
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text("Sair", style: TextStyle(color: Colors.white)),
+            onPressed: () async {
+              // 1. Fecha o diálogo
+              Navigator.pop(context);
+              
+              // 2. Desloga do Firebase (Auth e Google se houver)
+              await FirebaseAuth.instance.signOut();
+              
+              // 3. Redireciona para a tela de Login
+              if (mounted) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginScreen()),
+                );
+              }
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
+
+
+  void _confirmarFecharApp(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: const Text("Sair do Prisma?"),
+        content: const Text("Deseja realmente fechar o aplicativo?"),
+        actions: [
+          TextButton(
+            child: const Text("Cancelar"),
+            onPressed: () => Navigator.pop(context),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.blueGrey),
+            child: const Text("Fechar", style: TextStyle(color: Colors.white)),
+            onPressed: () {
+              // Comando que solicita ao sistema operacional para fechar o app
+              SystemNavigator.pop(); 
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
+
   Future<void> _abrirLink(String url) async {
     final Uri uri = Uri.parse(url);
     if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
@@ -386,7 +452,7 @@ Future<void> _setupInitialLocation() async {
         padding: EdgeInsets.only(top: 15),
         child: Text(
           'O Prisma é uma ferramenta colaborativa desenvolvida por alunos e docentes do Intituto Federal de São Paulo, campus Birigui, com a finalidade de catalogar através de um mapa, os indicadores de Qualidade de Vida e Direitos Humanos da cidade de Birigui-SP e região. '
-          '\n\nNosso objetivo é dar voz aos cidadãos, indentificando pontos positivos e críticos na cidade.'
+          '\n\nNosso objetivo é dar voz aos cidadãos, identificando pontos positivos e críticos na cidade.'
           '\n\nRecomendamos que todos os usuarios estejam cientes de nossos Termos de Uso e Políticas de Privacidade a fim de otimizar e potencializar o uso do aplicativo',
           style: TextStyle(fontSize: 14),
           textAlign: TextAlign.justify,
@@ -1024,26 +1090,38 @@ drawer: Drawer(
         );
       }),
 
-      // 4. RODAPÉ (Outras opções e Botões)
-      // Eles entram aqui direto, sem Spacer ou Expanded, para rolar junto
       const Divider(thickness: 2),
-      const Padding(
-        padding: EdgeInsets.only(left: 16, top: 10, bottom: 5),
-        child: Text("Outras Opções", style: TextStyle(color: Colors.grey, fontSize: 12)),
-      ),
 
-      ListTile(
-        leading: const Icon(Icons.info_outline, color: Colors.blueGrey),
-        title: const Text('Sobre o App'),
-        onTap: () {
-          Navigator.pop(context);
-          _showSobreApp();
-        },
-      ),
+          if (userRole == 'admin')
+          ListTile(
+            leading: const Icon(Icons.category, color: Color.fromARGB(255, 0, 204, 255)),
+            title: const Text('Gerenciar Categorias'),
+            onTap: () {
+              Navigator.pop(context);
+              // Chama a classe que você tornou pública
+              Navigator.push(context, MaterialPageRoute(builder: (context) => const CategoryManagerScreen()));
+            },
+          ),
+
+              // Use a variável userRole ou o getter _canAdd que você já possui
+        if (userRole == 'colaborador' || userRole == 'admin')
+          ListTile(
+            leading: const Icon(Icons.add_location_alt, color: Colors.orange),
+            title: const Text('Adicionar Novo Ponto'),
+            onTap: () {
+              Navigator.pop(context); // Fecha o menu
+              Navigator.push(
+                context, 
+                MaterialPageRoute(
+                  builder: (context) => AddPointScreen(initialCenter: _mapController.camera.center),
+                )
+              );
+            },
+          ),
 
       if (isVisitante) 
         ListTile(
-          leading: const Icon(Icons.login, color: Colors.green),
+          leading: const Icon(Icons.login, color: Color(0xFF4CAF50)),
           title: const Text('Fazer Login'),
           onTap: () {
              Navigator.pop(context);
@@ -1053,7 +1131,7 @@ drawer: Drawer(
       else ...[
         if (userRole == 'leitor')
           ListTile(
-            leading: const Icon(Icons.volunteer_activism, color: Colors.orange),
+            leading: const Icon(Icons.volunteer_activism, color: Color(0xFF4CAF50)),
             title: const Text('Quero ser Colaborador'),
             onTap: () {
               Navigator.pop(context); 
@@ -1065,7 +1143,6 @@ drawer: Drawer(
 
           // --- ÁREA DO ADMINISTRADOR ---
               if (userRole == 'admin') ...[
-                const Divider(), // Uma linha para separar
                 ListTile(
                   leading: const Icon(Icons.admin_panel_settings, color: Colors.purple),
                   title: const Text('Gerenciar Colaboradores'),
@@ -1079,21 +1156,46 @@ drawer: Drawer(
                   },
                 ),
               ],
-
+        
+        const Divider(thickness: 2),
+        const Padding(
+        padding: EdgeInsets.only(left: 16, top: 10, bottom: 5),
+        child: Text("Outras Opções", style: TextStyle(color: Colors.grey, fontSize: 12)),
+      ),
 
         ListTile(
-          leading: const Icon(Icons.exit_to_app, color: Colors.red),
-          title: const Text('Sair'),
-          onTap: () async {
-            await FirebaseAuth.instance.signOut();
-            if (mounted) {
-               Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => const LoginScreen()));
-            }
+        leading: const Icon(Icons.info_outline, color: Colors.blueGrey),
+        title: const Text('Sobre o App'),
+        onTap: () {
+          Navigator.pop(context);
+          _showSobreApp();
+        },
+      ),
+
+        ListTile(
+        leading: const Icon(Icons.logout, color: Colors.red),
+        title: const Text('Fazer Logout', style: TextStyle(color: Colors.red)),
+        onTap: () {
+          // 1. Fecha o menu lateral primeiro
+          Navigator.pop(context); 
+          
+          // 2. Chama a função de confirmação
+          _confirmarSaida(context);
+        },
+      ),
+
+        ListTile(
+          leading: const Icon(Icons.exit_to_app, color: Color.fromARGB(255, 54, 89, 244)),
+          title: const Text('Sair do Prisma', style: TextStyle(color: Color.fromARGB(255, 54, 89, 244))),
+          onTap: () {
+            Navigator.pop(context); // Fecha o menu lateral
+            _confirmarFecharApp(context); // Chama o alerta
           },
         ),
-      ],
-      
+
+    
       const SizedBox(height: 20), // Espaço final
+      ],
     ],
   ),
 ),
@@ -1303,7 +1405,7 @@ drawer: Drawer(
           ),
           const SizedBox(height: 20),
           
-          if (_canAdd) ...[
+          if (userRole == 'colaborador' || userRole == 'admin') ...[
             FloatingActionButton(
               heroTag: "btnAdd",
               onPressed: () {

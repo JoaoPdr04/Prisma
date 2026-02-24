@@ -13,10 +13,10 @@ class AddPointScreen extends StatefulWidget {
   });
 
   @override
-  State<AddPointScreen> createState() => _AddPointScreenState();
+  State<AddPointScreen> createState() => AddPointScreenState();
 }
 
-class _AddPointScreenState extends State<AddPointScreen> {
+class AddPointScreenState extends State<AddPointScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final MapController _mapController = MapController();
 
