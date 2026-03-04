@@ -573,7 +573,7 @@ Future<void> _setupInitialLocation() async {
   }
 
   // --- MOSTRAR DETALHES (CORRIGIDO O TEXTO CORTADO) ---
-void _showPointDetails(Map<String, dynamic> data, String docId,LatLng point) {
+void _showPointDetails(Map<String, dynamic> data, String docId,LatLng point, bool podeEditar) {
     final String colorHex = _descriptorsData[data['categoria']]?['cor'] ?? '#808080';
     final Color categoryColor = ColorUtils.fromHex(colorHex);
 
@@ -659,8 +659,7 @@ void _showPointDetails(Map<String, dynamic> data, String docId,LatLng point) {
                   
                   const SizedBox(height: 15),
 
-                  // --- 2. BOTÕES DE ADMIN (SÓ SE TIVER PERMISSÃO) ---
-                  if (_canAdd) 
+                  if (podeEditar) 
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
@@ -744,7 +743,14 @@ void _showPointDetails(Map<String, dynamic> data, String docId,LatLng point) {
         final latLng = LatLng(geoPoint.latitude, geoPoint.longitude);
         
         _mapController.move(latLng, 17.0);
-        _showPointDetails(data, result.id, latLng);
+
+        final String meuUid = FirebaseAuth.instance.currentUser?.uid ?? "";
+        final String criadorUid = data['criadoPor'] ?? ""; // Usamos 'data' pois é onde estão os campos
+
+        bool podeEditar = (userRole == 'admin') || 
+                          (userRole == 'colaborador' && meuUid == criadorUid);
+
+        _showPointDetails(data, result.id, latLng, podeEditar);
       }
     }
   }
@@ -1340,7 +1346,16 @@ drawer: Drawer(
             // ---------------------------
 
             child: GestureDetector(
-              onTap: () => _showPointDetails(data, doc.id, latLng),
+              onTap: () {
+              final String meuUid = FirebaseAuth.instance.currentUser?.uid ?? "";
+              final String criadorUid = data['criadoPor'] ?? ""; 
+
+              bool podeEditar = (userRole == 'admin') || 
+                                (userRole == 'colaborador' && meuUid == criadorUid);
+
+              // 4. Chamamos a função usando 'data' (campos) e 'doc.id' (identificador)
+              _showPointDetails(data, doc.id, latLng, podeEditar);
+              },
               child: Stack(
                 alignment: Alignment.center,
                 clipBehavior: Clip.none, 

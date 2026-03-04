@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'color_utils.dart'; 
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AddPointScreen extends StatefulWidget {
   final LatLng initialCenter;
@@ -110,6 +111,7 @@ class AddPointScreenState extends State<AddPointScreen> {
         'tipo': _selectedType, 
         'coordenadas': GeoPoint(_selectedPoint!.latitude, _selectedPoint!.longitude),
         'data_criacao': FieldValue.serverTimestamp(),
+        'criadoPor': FirebaseAuth.instance.currentUser?.uid,
       });
 
       if (mounted) {
