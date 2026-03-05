@@ -150,7 +150,7 @@ class _MapScreenState extends State<MapScreen> {
 
   Future<void> _checkUpdate() async {
     // IMPORTANTE: Use o seu link RAW do GitHub aqui
-    final url = Uri.parse("https://raw.githubusercontent.com/JoaoPdr04/Prisma/main/version.json");
+    final url = Uri.parse("https://github.com/JoaoPdr04/Prisma/releases/download/v1.2.0/app-release.apk");
 
 try {
       // 1. Descobre a versão instalada no celular agora
@@ -166,6 +166,7 @@ try {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
         String remoteVersion = data['latest_version'];
+    
         
         // 3. Compara: Se a versão da internet for diferente da local
         if (_isNovaVersaoMaior(remoteVersion, localVersion)) {
