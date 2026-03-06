@@ -161,7 +161,6 @@ class _MapScreenState extends State<MapScreen> {
   // ⚠️ ERRO 1 CORRIGIDO: O link aqui DEVE ser o do version.json (Link RAW)
   // Não coloque o link do APK aqui, coloque o link do arquivo de texto!
   final url = Uri.parse("https://raw.githubusercontent.com/JoaoPdr04/Prisma/main/version.json");
-
   try {
     PackageInfo packageInfo = await PackageInfo.fromPlatform();
     String localVersion = packageInfo.version; 
@@ -1925,9 +1924,10 @@ drawer: Drawer(
               'Obras': 'obras',
               'Saneamento Básico': 'saneamento_basico',
 
+              'Hortas Comunitárias': 'hortas_comunitarias',
               'Parques': 'parques',
               'Pontos de Coleta Seletiva': 'pontos_de_coleta_seletiva',
-              'Hortas Comunitárias': 'hortas_comunitarias',
+              
               
               'Ciclovias': 'ciclovias',
               'Pontos de Ônibus': 'pontos_de_onibus',
@@ -1936,7 +1936,7 @@ drawer: Drawer(
               'Participação Social': 'participacao_social',
 
               'Conselho Tutelar, Delegacias...': 'conselho_tutelar_delegacias',
-              'Hospitais, Postos de Vacinação, UBS...': 'hospitais_postos_de_vacinacao',
+              'Hospitais, Postos de vacinação, UBS...': 'hospitais_postos_de_vacinacao',
 
               // ... adicione os outros aqui ...
             };
