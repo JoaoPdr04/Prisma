@@ -4,10 +4,9 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/gestures.dart'; // Para links clicáveis
 import 'package:url_launcher/url_launcher.dart'; // Para abrir navegador
-
-// Importe suas telas aqui
 import 'main.dart'; // Para MapScreen (ou HomeScreen)
 import 'signup_screen.dart'; // Tela de cadastro
+import 'package:flutter/services.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -201,6 +200,24 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      
+      extendBodyBehindAppBar: true, 
+      appBar: AppBar(
+        backgroundColor: Colors.transparent, // Deixa invisível
+        elevation: 0, // Remove a sombra
+        leading: IconButton(
+          icon: const Icon(Icons.exit_to_app, color: Colors.blueGrey), // Ou Icons.close
+          tooltip: 'Sair do Prisma',
+          onPressed: () {
+            // 1. Se quiser apenas fechar o app (Android/iOS)
+            SystemNavigator.pop(); 
+            
+            // 2. OU se quiser voltar para uma tela anterior (caso exista)
+            // Navigator.of(context).pop();
+          },
+        ),
+      ),
+      
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),

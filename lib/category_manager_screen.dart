@@ -14,131 +14,164 @@ class CategoryManagerScreenState extends State<CategoryManagerScreen> {
       FirebaseFirestore.instance.collection('descritores');
 
   // --- DIÁLOGO PARA ADICIONAR NOVO DESCRITOR ---
-  Future<void> _showAddDescriptorDialog() async {
-    final nameController = TextEditingController();
-    final colorController = TextEditingController();
-    final subItemController = TextEditingController();
-    
-    // Lista temporária para guardar os subitens enquanto cria
-    List<String> tempSubItems = [];
+  // Agora a função aceita um DocumentSnapshot opcional
+Future<void> _showDescriptorDialog([DocumentSnapshot? doc]) async {
+  final isEditing = doc != null;
+  
+  // Se estiver editando, carrega os dados atuais; se não, começa vazio
+  final nameController = TextEditingController(text: isEditing ? doc['nome'] : '');
+  final colorController = TextEditingController(text: isEditing ? doc['cor'] : '');
+  final subItemController = TextEditingController();
+  
+  // Inicializa a lista com os subitens existentes ou vazia
+  List<String> tempSubItems = isEditing 
+      ? List<String>.from(doc['subdescritores'] ?? []) 
+      : [];
 
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false, // Obriga a clicar em Cancelar ou Salvar
-      builder: (BuildContext context) {
-        return StatefulBuilder( // Necessário para atualizar a lista DENTRO do diálogo
-          builder: (context, setStateDialog) {
-            return AlertDialog(
-              title: const Text('Novo Descritor'),
-              content: SizedBox(
-                width: double.maxFinite,
-                child: ListView(
-                  shrinkWrap: true,
-                  children: [
-                    // 1. Nome e Cor
-                    TextField(
-                      controller: nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Nome do Descritor',
-                        hintText: 'Ex: Saúde, Educação...',
-                        border: OutlineInputBorder()
-                      ),
+  await showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (BuildContext context) {
+      return StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return AlertDialog(
+            title: Text(isEditing ? 'Editar Descritor' : 'Novo Descritor'),
+            content: SizedBox(
+              width: double.maxFinite,
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Nome do Descritor',
+                      border: OutlineInputBorder()
                     ),
-                    const SizedBox(height: 10),
-                    TextField(
-                      controller: colorController,
-                      decoration: const InputDecoration(
-                        labelText: 'Cor Hex (Ex: #FF0000)',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.color_lens)
-                      ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: colorController,
+                    decoration: const InputDecoration(
+                      labelText: 'Cor Hex (Ex: #FF0000)',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.color_lens)
                     ),
-                    const SizedBox(height: 20),
-                    
-                    // 2. Área de Subdescritores
-                    const Text("Subdescritores (Detalhes):", style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 5),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: subItemController,
-                            decoration: const InputDecoration(
-                              hintText: 'Ex: Hospital, UBS...',
-                              isDense: true,
-                            ),
-                            onSubmitted: (value) {
-                              if (value.trim().isNotEmpty) {
-                                setStateDialog(() {
-                                  tempSubItems.add(value.trim());
-                                  subItemController.clear();
-                                });
-                              }
-                            },
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.add_circle, color: Colors.blue),
-                          onPressed: () {
-                            if (subItemController.text.trim().isNotEmpty) {
+                  ),
+                  const SizedBox(height: 20),
+                  const Text("Subdescritores:", style: TextStyle(fontWeight: FontWeight.bold)),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: subItemController,
+                          decoration: const InputDecoration(hintText: 'Novo subitem...'),
+                          onSubmitted: (value) {
+                            if (value.trim().isNotEmpty) {
                               setStateDialog(() {
-                                tempSubItems.add(subItemController.text.trim());
+                                tempSubItems.add(value.trim());
                                 subItemController.clear();
                               });
                             }
                           },
                         ),
-                      ],
-                    ),
-                    
-                    // 3. Lista dos Subitens adicionados
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 8.0,
-                      children: tempSubItems.map((sub) {
-                        return Chip(
-                          label: Text(sub),
-                          deleteIcon: const Icon(Icons.close, size: 18),
-                          onDeleted: () {
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.add_circle, color: Colors.blue),
+                        onPressed: () {
+                          if (subItemController.text.trim().isNotEmpty) {
                             setStateDialog(() {
-                              tempSubItems.remove(sub);
+                              tempSubItems.add(subItemController.text.trim());
+                              subItemController.clear();
                             });
-                          },
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ),
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8.0,
+                    children: tempSubItems.map((sub) {
+                      return Chip(
+                        label: Text(sub),
+                        onDeleted: () {
+                          setStateDialog(() => tempSubItems.remove(sub));
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ],
               ),
-              actions: <Widget>[
-                TextButton(
-                  child: const Text('Cancelar'),
-                  onPressed: () => Navigator.of(context).pop(),
-                ),
-                ElevatedButton(
-                  child: const Text('Salvar'),
-                  onPressed: () {
-                    final String name = nameController.text.trim();
-                    final String color = colorController.text.trim();
+            ),
+            actions: <Widget>[
+              TextButton(
+                child: const Text('Cancelar'),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              ElevatedButton(
+                child: const Text('Salvar'),
+                onPressed: () async {
+                  final String name = nameController.text.trim();
+                  final String color = colorController.text.trim();
 
-                    if (name.isNotEmpty && color.isNotEmpty) {
-                      // Salva no Firebase com a estrutura nova
-                      _descriptorsCollection.add({
-                        "nome": name,
-                        "cor": color,
-                        "subdescritores": tempSubItems, // Salva o Array
-                      });
-                      Navigator.of(context).pop();
+                  if (name.isNotEmpty && color.isNotEmpty) {
+                    // 1. Criamos um Map com os dados, garantindo que a lista seja tratada como List<String>
+                    final Map<String, dynamic> data = {
+                      "nome": name,
+                      "cor": color,
+                      "subdescritores": List<String>.from(tempSubItems), // Força a tipagem correta
+                    };
+
+                    try {
+                      if (isEditing) {
+                        // 2. Usamos doc.id para atualizar o documento específico
+                        await _descriptorsCollection.doc(doc.id).update(data);
+                      } else {
+                        // 3. Adiciona um novo
+                        await _descriptorsCollection.add(data);
+                      }
+
+                      // 4. SÓ FECHA o diálogo se o widget ainda estiver na árvore (evita o erro assíncrono)
+                      if (context.mounted) {
+                        Navigator.of(context).pop();
+                      }
+                    } catch (e) {
+                      debugPrint("Erro ao salvar no Firestore: $e");
+                      // Opcional: mostrar um SnackBar de erro aqui
                     }
-                  },
-                ),
-              ],
-            );
+                  }
+                },
+              ),
+            ],
+          );
+        },
+      );
+    },
+  );
+}
+
+void _confirmDelete(DocumentSnapshot doc, String nome) {
+  showDialog(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Excluir Descritor'),
+      content: Text('Tem certeza que deseja excluir "$nome" e todos os seus subitens?'),
+      actions: [
+        TextButton(
+          child: const Text('Não'),
+          onPressed: () => Navigator.of(ctx).pop(),
+        ),
+        TextButton(
+          child: const Text('Sim, Excluir', style: TextStyle(color: Colors.red)),
+          onPressed: () {
+            _descriptorsCollection.doc(doc.id).delete();
+            Navigator.of(ctx).pop();
           },
-        );
-      },
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
@@ -184,30 +217,20 @@ class CategoryManagerScreenState extends State<CategoryManagerScreen> {
                     style: const TextStyle(fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text("${subs.length} subdescritores"),
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    onPressed: () {
-                      showDialog(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text('Excluir Descritor'),
-                          content: Text('Tem certeza que deseja excluir "${data['nome']}" e todos os seus subitens?'),
-                          actions: [
-                            TextButton(
-                              child: const Text('Não'),
-                              onPressed: () => Navigator.of(ctx).pop(),
-                            ),
-                            TextButton(
-                              child: const Text('Sim, Excluir'),
-                              onPressed: () {
-                                _descriptorsCollection.doc(document.id).delete();
-                                Navigator.of(ctx).pop();
-                              },
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min, // Importante para não quebrar o layout
+                    children: [
+                      // BOTÃO EDITAR (O QUE ADICIONAMOS)
+                      IconButton(
+                        icon: const Icon(Icons.edit, color: Colors.blue),
+                        onPressed: () => _showDescriptorDialog(document), // Chama a função passando o doc
+                      ),
+                      // BOTÃO EXCLUIR (O QUE JÁ EXISTIA, MAS ORGANIZADO)
+                      IconButton(
+                        icon: const Icon(Icons.delete, color: Colors.red),
+                        onPressed: () => _confirmDelete(document, data['nome']),
+                      ),
+                    ],
                   ),
                   // O conteúdo expandido mostra a lista de subitens
                   children: [
@@ -240,7 +263,7 @@ class CategoryManagerScreenState extends State<CategoryManagerScreen> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _showAddDescriptorDialog,
+        onPressed: _showDescriptorDialog,
         backgroundColor: Colors.blue,
         child: const Icon(Icons.add),
       ),

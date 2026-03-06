@@ -641,6 +641,340 @@ Future<void> _setupInitialLocation() async {
     );
   }
 
+  void _showOnboardingColab(BuildContext context) {
+  final PageController _pageController = PageController();
+  
+  Widget _buildPageIndicator(int pageCount, int currentPage) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(pageCount, (index) {
+        return Container(
+          width: index == currentPage ? 12.0 : 8.0, // O ponto atual é maior
+          height: index == currentPage ? 12.0 : 8.0,
+          margin: const EdgeInsets.symmetric(horizontal: 4.0),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: index == currentPage ? Colors.blueAccent : Colors.grey.shade400,
+          ),
+        );
+      }),
+    );
+  }
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        // Definimos a lista de páginas aqui para facilitar o cálculo do tamanho
+        final List<Widget> pages = [
+          _buildStep(children: [
+            const Text("Bem-vindo \nnovo colaborador!", style: TextStyle(fontSize: 27, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+            const SizedBox(height: 15),
+            Image.asset("assets/icon/app_icon.png", height: 200),
+            const SizedBox(height: 20),
+            const Text("Para que você possa dar seguimento no seu novo cargo de Colaborador, vou mostrar como funciona o processo de salvar novos pontos.", style: TextStyle(fontSize: 15, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+          ]),
+          _buildStep(children: [
+            const Text("Pesquisa", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            const Text("É possível pesquisar ruas e locais pelo ícone de 'lupa' no canto superior direito.", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const SizedBox(height: 10),
+            Image.asset("assets/icon/colab_pesquisa.png", height: 270),
+          ]),
+          _buildStep(children: [
+            const Text("Adicionar novo ponto", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            Image.asset("assets/icon/colab_novo_ponto.png", height: 280),
+            const SizedBox(height: 10),
+            const Text("É possível adicionar novos pontos ao mapa pelo novo botão do canto inferior direito e pelo botão 'Adicionar Novo Ponto' ao fim dos descritores no Menu.", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+          ]),
+          _buildStep(children: [
+            const Text("Defina o Local", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            const Text("Ao clicar na tela é possível posicionar no mapa o novo local. Posteriormente selecionando no canto inferior direito o botão 'Preencher Dados' é possível inserir as novas informações", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const SizedBox(height: 10),
+            Image.asset("assets/icon/colab_definindo_local.png", height: 270),
+          ]),
+          _buildStep(children: [
+            const Text("Preencher Dados", style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            const Text("É muito importante se atentar ao tipo do novo ponto, podendo ser 'Local' ou 'Ponto Crítico'. Defina um nome para o ponto, uma descrição com as informações mais relevantes e categorize o ponto com seu respectivo descritor e subdescritor. Por fim, basta salvar.", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const SizedBox(height: 10),
+            Image.asset("assets/icon/colab_dados.png", height: 240),
+          ]),
+          _buildStep(children: [
+            const Text("Edição e Exclusão", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            const Text("Ao adicionar um ponto é possível editar para atualizações e/ou excluir, porém o colaborador só tem permissão para modificar pontos que ele mesmo adicionou, onde após o próprio colaborador, os únicos que podem realizar alterações nos demais pontos são os usuáiors com cargo de 'Admin'.", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const SizedBox(height: 10),
+            Image.asset("assets/icon/colab_edit.png", height: 210),
+          ]),
+          _buildStep(children: [
+            const Text("Ajuda", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            const Text("Se for necessário consultar este guia novamente, basta clicar no ícone de interrogação [verde] no canto superior esquerdo.\nCaso haja dúvidas e/ou problemas com alguma funcionalidade fique a vontade para entrar em contato: jpfdo24@gmail.com ferreira.joao2@aluno.ifsp.edu.br", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const SizedBox(height: 10),
+            Image.asset("assets/icon/colab_ajuda.png", height: 210),
+          ]),
+        ];
+
+        int currentPage = 0;
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              content: SizedBox(
+                width: double.maxFinite,
+                height: 550, // Altura ajustada para caber os pontos
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: PageView(
+                        controller: _pageController,
+                        onPageChanged: (int page) {
+                          setState(() {
+                            currentPage = page;
+                          });
+                        },
+                        children: pages,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    // LÓGICA DOS PONTINHOS (INDICADORES)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(pages.length, (index) {
+                        return Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          width: currentPage == index ? 12 : 8,
+                          height: currentPage == index ? 12 : 8,
+                          decoration: BoxDecoration(
+                            color: currentPage == index ? Colors.blueAccent : Colors.grey.shade400,
+                            shape: BoxShape.circle,
+                          ),
+                        );
+                      }),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // BOTÃO ANTERIOR
+                    TextButton(
+                      onPressed: currentPage == 0
+                          ? null
+                          : () {
+                              _pageController.previousPage(
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeIn,
+                              );
+                            },
+                      child: Text(
+                        "Anterior",
+                        style: TextStyle(color: currentPage == 0 ? Colors.grey : Colors.blueAccent),
+                      ),
+                    ),
+                    // BOTÃO PRÓXIMO / FECHAR
+                    ElevatedButton(
+                      onPressed: () {
+                        if (currentPage < pages.length - 1) {
+                          _pageController.nextPage(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeIn,
+                          );
+                        } else {
+                          Navigator.pop(context);
+                        }
+                      },
+                      child: Text(currentPage == pages.length - 1 ? "Fechar" : "Próximo"),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _showOnboardingAdmin(BuildContext context) {
+  final PageController _pageController = PageController();
+  
+  Widget _buildPageIndicator(int pageCount, int currentPage) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(pageCount, (index) {
+        return Container(
+          width: index == currentPage ? 12.0 : 8.0, // O ponto atual é maior
+          height: index == currentPage ? 12.0 : 8.0,
+          margin: const EdgeInsets.symmetric(horizontal: 4.0),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: index == currentPage ? Colors.blueAccent : Colors.grey.shade400,
+          ),
+        );
+      }),
+    );
+  }
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        // Definimos a lista de páginas aqui para facilitar o cálculo do tamanho
+        final List<Widget> pages = [
+          _buildStep(children: [
+            const Text("Bem-vindo \nnovo Administrador (Admin)!", style: TextStyle(fontSize: 27, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+            const SizedBox(height: 15),
+            Image.asset("assets/icon/app_icon.png", height: 200),
+            const SizedBox(height: 20),
+            const Text("Para que você possa dar seguimento no seu novo cargo de Admin, vou mostrar algumas fucionalidades.", style: TextStyle(fontSize: 15, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+          ]),
+          _buildStep(children: [
+            const Text("Pesquisa", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            const Text("É possível pesquisar ruas e locais pelo ícone de 'lupa' no canto superior direito.", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const SizedBox(height: 10),
+            Image.asset("assets/icon/admin_pesquisa.png", height: 270),
+          ]),
+          _buildStep(children: [
+            const Text("Adicionar novo ponto", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            Image.asset("assets/icon/admin_novo_ponto.png", height: 280),
+            const SizedBox(height: 10),
+            const Text("É possível adicionar novos pontos ao mapa pelo novo botão do canto inferior direito e pelo botão 'Adicionar Novo Ponto' ao fim dos descritores no Menu.", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+          ]),
+          _buildStep(children: [
+            const Text("Defina o Local", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            const Text("Ao clicar na tela é possível posicionar no mapa o novo local. Posteriormente, selecionando no canto inferior direito o botão 'Preencher Dados' é possível inserir as novas informações", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const SizedBox(height: 10),
+            Image.asset("assets/icon/admin_definindo_local.png", height: 270),
+          ]),
+          _buildStep(children: [
+            const Text("Preencher Dados", style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            const Text("É muito importante se atentar ao tipo do novo ponto, podendo ser 'Local' ou 'Ponto Crítico'. Defina um nome para o ponto, uma descrição com as informações mais relevantes e categorize o ponto com seu respectivo descritor e subdescritor. Por fim, basta salvar.", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const SizedBox(height: 10),
+            Image.asset("assets/icon/admin_dados.png", height: 240),
+          ]),
+          _buildStep(children: [
+            const Text("Edição e Exclusão", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            const Text("Se necessário é possível editar para atualizações e/ou exclusão de um ponto, tendo permissão para mexer em qualquer ponto que desejar modificar'.", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const SizedBox(height: 10),
+            Image.asset("assets/icon/admin_edit.png", height: 270),
+          ]),
+          _buildStep(children: [
+            const Text("Gerenciar Categorias", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            const Text("O administrador pode adicionar ou modificar os descritores e/ou os subdescritores (sendo de imensa necessidade, comunicar o desenvolvedor para inserção de novos ícones (jpfdo24@gmail.com ferreira.joao2@aluno.ifsp.edu.br).", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const SizedBox(height: 10),
+            Image.asset("assets/icon/admin_gdesc.png", height: 210),
+          ]),
+          _buildStep(children: [
+            const Text("Gerenciar Colaboradores", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            const Text("Como administrador você tem permissão para promover usuários com cargo de leitor para colaborador, aprovando ou rejeitando as solicitações conforme a descrição do pedido.", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const SizedBox(height: 10),
+            Image.asset("assets/icon/admin_gcolab.png", height: 210),
+          ]),
+          _buildStep(children: [
+            const Text("Ajuda", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            const Text("Se for necessário consultar este guia novamente, basta clicar no ícone de interrogação [roxo] no canto superior esquerdo.\nCaso haja dúvidas e/ou problemas com alguma funcionalidade fique a vontade para entrar em contato: jpfdo24@gmail.com ferreira.joao2@aluno.ifsp.edu.br", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const SizedBox(height: 10),
+            Image.asset("assets/icon/admin_ajuda.png", height: 210),
+          ]),
+        ];
+
+        int currentPage = 0;
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              content: SizedBox(
+                width: double.maxFinite,
+                height: 550, // Altura ajustada para caber os pontos
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: PageView(
+                        controller: _pageController,
+                        onPageChanged: (int page) {
+                          setState(() {
+                            currentPage = page;
+                          });
+                        },
+                        children: pages,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    // LÓGICA DOS PONTINHOS (INDICADORES)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(pages.length, (index) {
+                        return Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          width: currentPage == index ? 12 : 8,
+                          height: currentPage == index ? 12 : 8,
+                          decoration: BoxDecoration(
+                            color: currentPage == index ? Colors.blueAccent : Colors.grey.shade400,
+                            shape: BoxShape.circle,
+                          ),
+                        );
+                      }),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // BOTÃO ANTERIOR
+                    TextButton(
+                      onPressed: currentPage == 0
+                          ? null
+                          : () {
+                              _pageController.previousPage(
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeIn,
+                              );
+                            },
+                      child: Text(
+                        "Anterior",
+                        style: TextStyle(color: currentPage == 0 ? Colors.grey : Colors.blueAccent),
+                      ),
+                    ),
+                    // BOTÃO PRÓXIMO / FECHAR
+                    ElevatedButton(
+                      onPressed: () {
+                        if (currentPage < pages.length - 1) {
+                          _pageController.nextPage(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeIn,
+                          );
+                        } else {
+                          Navigator.pop(context);
+                        }
+                      },
+                      child: Text(currentPage == pages.length - 1 ? "Fechar" : "Próximo"),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _showSobreApp() {
   showAboutDialog(
     context: context,
@@ -1184,11 +1518,25 @@ void _showRequestAccessDialog() {
                         icon: const Icon(Icons.help_outline),
                         onPressed: () => _showOnboarding(context),
                       ),
+
+              if (userRole == 'colaborador') ...[
+               IconButton(
+                        icon: const Icon(Icons.help_center_outlined,  color: Color(0xFF4CAF50)),
+                        onPressed: () => _showOnboardingColab(context),
+                       ),                 
+                      ],
+
+              if (userRole == 'admin') ...[
+               IconButton(
+                        icon: const Icon(Icons.help_center_outlined, color: Color.fromARGB(255, 107, 33, 243)),
+                        onPressed: () => _showOnboardingAdmin(context),
+                       ),                 
+                      ]
                     ],
                   );
                 },
               ),
-              leadingWidth: 100, // Aumentamos a largura para caber o menu + ajuda se necessário
+              leadingWidth: 145, // Aumentamos a largura para caber o menu + ajuda se necessário
 
           // O que fica na DIREITA
           actions: [
@@ -1579,6 +1927,7 @@ drawer: Drawer(
 
               'Parques': 'parques',
               'Pontos de Coleta Seletiva': 'pontos_de_coleta_seletiva',
+              'Hortas Comunitárias': 'hortas_comunitarias',
               
               'Ciclovias': 'ciclovias',
               'Pontos de Ônibus': 'pontos_de_onibus',
@@ -1587,7 +1936,7 @@ drawer: Drawer(
               'Participação Social': 'participacao_social',
 
               'Conselho Tutelar, Delegacias...': 'conselho_tutelar_delegacias',
-              'Hospitais, Postos de vacinação, UBS...': 'hospitais_postos_de_vacinacao',
+              'Hospitais, Postos de Vacinação, UBS...': 'hospitais_postos_de_vacinacao',
 
               // ... adicione os outros aqui ...
             };
