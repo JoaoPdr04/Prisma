@@ -26,6 +26,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert'; // Para ler o JSON da resposta
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() async {
   print('--- APLICATIVO INICIADO ---');
@@ -86,6 +87,16 @@ class MyApp extends StatelessWidget {
 ),
     );
   }  
+}
+
+Widget _buildStep({required List<Widget> children}) {
+  return Padding(
+    padding: const EdgeInsets.all(20),
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center, // Centraliza tudo verticalmente
+      children: children, // Aqui entram os elementos na ordem que você escolher
+    ),
+  );
 }
 
 class MapScreen extends StatefulWidget {
@@ -265,6 +276,10 @@ void _showUpdateDialog(String currentVersion, String newVersion, String url) { /
     _listenToDescriptors();
     _startLocationUpdates();
     _checkUpdate();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+    _checkFirstSeen();
+   });
   }
 
   @override
@@ -337,6 +352,20 @@ void _showUpdateDialog(String currentVersion, String newVersion, String url) { /
       );
     },
   );
+}
+
+  Future<void> _checkFirstSeen() async {
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  // Procura pela chave 'tutorial_visto'. Se não existir (null), retorna false.
+  bool _visto = (prefs.getBool('tutorial_visto') ?? false);
+
+  if (!_visto) {
+    // Se nunca viu, mostra o tutorial
+    _showOnboarding(context);
+    
+    // E agora "anota" que ele já viu para a próxima vez
+    await prefs.setBool('tutorial_visto', true);
+  }
 }
 
   Future<void> _abrirLink(String url) async {
@@ -428,6 +457,188 @@ Future<void> _setupInitialLocation() async {
       );
       _setupInitialLocation();
     }
+  }
+
+  void _showOnboarding(BuildContext context) {
+  final PageController _pageController = PageController();
+  
+  Widget _buildPageIndicator(int pageCount, int currentPage) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: List.generate(pageCount, (index) {
+        return Container(
+          width: index == currentPage ? 12.0 : 8.0, // O ponto atual é maior
+          height: index == currentPage ? 12.0 : 8.0,
+          margin: const EdgeInsets.symmetric(horizontal: 4.0),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: index == currentPage ? Colors.blueAccent : Colors.grey.shade400,
+          ),
+        );
+      }),
+    );
+  }
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        // Definimos a lista de páginas aqui para facilitar o cálculo do tamanho
+        final List<Widget> pages = [
+          _buildStep(children: [
+            const Text("Bem-vindo \nao Prisma!", style: TextStyle(fontSize: 27, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+            const SizedBox(height: 15),
+            Image.asset("assets/icon/app_icon.png", height: 200),
+            const SizedBox(height: 20),
+            const Text("Este app mapeia os indicadores de qualidade de vida e direitos humanos da sua cidade.", style: TextStyle(fontSize: 15, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+          ]),
+          _buildStep(children: [
+            const Text("Locais", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            Image.asset("assets/icon/tutorial_locais.png", height: 280),
+            const SizedBox(height: 10),
+            const Text("Os ícones distribuídos pelo mapa definem locais significativos para você quanto cidadão, indicando a sua localização e fornecendo mais informação clicando sobre eles.", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+          ]),
+          _buildStep(children: [
+            const Text("Informações", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            const Text("Cada ponto possui título, descritor e subdescritor (categoria que mais se aproxima da sua finalidade), descrição com informações mais detalhadas e um botão que traça uma rota até o local.", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const SizedBox(height: 10),
+            Image.asset("assets/icon/tutorial_info.png", height: 270),
+          ]),
+          _buildStep(children: [
+            const Text("Menu", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            const Text("O ícone de 'três risquinhos' no canto superior esquerdo, permite consultar os dados do usuário e configurar a forma de vizualização dos pontos do mapa.", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const SizedBox(height: 10),
+            Image.asset("assets/icon/tutorial_menu.png", height: 270),
+          ]),
+          _buildStep(children: [
+            const Text("Diferença de Marcadores", style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            const Text("Os ícones do mapa são divididos em 'locais' e 'pontos críticos'. Locais são prédios, órgãos e serviços de teor social e Pontos Críticos são locais ou regiões que demandam alguma manutenção ou atenção perante a população e/ou agentes responsáveis.", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const SizedBox(height: 10),
+            Image.asset("assets/icon/tutorial_pontos.png", height: 240),
+          ]),
+          _buildStep(children: [
+            const Text("Filtro de Descritores", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            const Text("Os descritores são categorias que auxiliam na vizualização de pontos específicos, permitindo filtrar os locais de maior interesse do usuário, desmarcando o 'Selecionar todos' e então clicando no descritor e/ou subdescritor que deseja vizualizar.", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const SizedBox(height: 10),
+            Image.asset("assets/icon/tutorial_filtros.png", height: 210),
+          ]),
+          _buildStep(children: [
+            const Text("Login", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            const Text("Convidamos todos os usuários do Prisma a realizem o login no final do menu, conferir mais informações sobre o aplicativo em 'Sobre o App' e fechá-lo caso as atividades sejam concluídas", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const SizedBox(height: 10),
+            Image.asset("assets/icon/tutorial_login.png", height: 270),
+          ]),
+          _buildStep(children: [
+            const Text("Tela de Login", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            Image.asset("assets/icon/tutorial_tela_de_login.png", height: 220),
+            const SizedBox(height: 10),
+            const Text("Para realizar o login recomenda-se que seja lido os 'Termos de Uso' e 'Política de Privacidade', assinalando logo após a caixinha confirmando que leu e concorda com os termos. O login pode ser feito através de uma 'Conta Google' ou preenchendo os dados em 'Criar conta agora'.", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+          ]),
+          _buildStep(children: [
+            const Text("Colaborador", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            const Text("Ao finalizar o primeiro login assume-se o cargo de 'leitor', porém mesmo no papel de visitante, tem-se o direito de acessar todos os pontos, descritores e suas demais funcionalidades. Porém, se desejar adicionar novos pontos, descritores e contribuir com o Prisma é necessário solicitar se tornar um 'Colaborador', contendo mais informações no botão 'Quero ser um colaborador' ao fim do menu no cargo de Leitor.", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const SizedBox(height: 10),
+            Image.asset("assets/icon/tutorial_colaborador.png", height: 120),
+          ]),          
+          _buildStep(children: [
+            const Text("Ajuda", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 10),
+            const Text("Se for necessário consultar este guia novamente, basta clicar no ícone de interrogação no canto superior esquerdo.", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const SizedBox(height: 10),
+            Image.asset("assets/icon/tutorial_ajuda.png", height: 270),
+          ]),
+
+        ];
+
+        int currentPage = 0;
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              content: SizedBox(
+                width: double.maxFinite,
+                height: 550, // Altura ajustada para caber os pontos
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: PageView(
+                        controller: _pageController,
+                        onPageChanged: (int page) {
+                          setState(() {
+                            currentPage = page;
+                          });
+                        },
+                        children: pages,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    // LÓGICA DOS PONTINHOS (INDICADORES)
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(pages.length, (index) {
+                        return Container(
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          width: currentPage == index ? 12 : 8,
+                          height: currentPage == index ? 12 : 8,
+                          decoration: BoxDecoration(
+                            color: currentPage == index ? Colors.blueAccent : Colors.grey.shade400,
+                            shape: BoxShape.circle,
+                          ),
+                        );
+                      }),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    // BOTÃO ANTERIOR
+                    TextButton(
+                      onPressed: currentPage == 0
+                          ? null
+                          : () {
+                              _pageController.previousPage(
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeIn,
+                              );
+                            },
+                      child: Text(
+                        "Anterior",
+                        style: TextStyle(color: currentPage == 0 ? Colors.grey : Colors.blueAccent),
+                      ),
+                    ),
+                    // BOTÃO PRÓXIMO / FECHAR
+                    ElevatedButton(
+                      onPressed: () {
+                        if (currentPage < pages.length - 1) {
+                          _pageController.nextPage(
+                            duration: const Duration(milliseconds: 300),
+                            curve: Curves.easeIn,
+                          );
+                        } else {
+                          Navigator.pop(context);
+                        }
+                      },
+                      child: Text(currentPage == pages.length - 1 ? "Fechar" : "Próximo"),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
   }
 
   void _showSobreApp() {
@@ -765,115 +976,183 @@ void _showPointDetails(Map<String, dynamic> data, String docId,LatLng point, boo
   }
 
   // --- FUNÇÃO PARA PEDIR ACESSO (COM DIAGNÓSTICO) ---
-  void _showRequestAccessDialog() {
-    final TextEditingController reasonController = TextEditingController();
+void _showRequestAccessDialog() {
+  final TextEditingController reasonController = TextEditingController();
+  final PageController requestPageController = PageController();
+  int currentReqPage = 0;
+  bool aceitouTermos = false;
 
-    showDialog(
-      context: context,
-      builder: (dialogContext) { // Mudei o nome para não confundir com o context principal
-        return AlertDialog(
-          title: const Text('Solicitar Acesso'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text('Por que você precisa de acesso?'),
+  showDialog(
+    context: context,
+    builder: (dialogContext) {
+      return StatefulBuilder(
+        builder: (context, setState) {
+          final List<Widget> steps = [
+            // Página 1: O que é
+            _buildStep(children: [
+              const Icon(Icons.stars, size: 80, color: Colors.amber),
+              const SizedBox(height: 20),
+              const Text("O que é um Colaborador?", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+              const SizedBox(height: 15),
+              const Text("Colaboradores são membros ativos da comunidade Prisma que ajudam a manter o mapa atualizado e relevante para todos.", textAlign: TextAlign.center, style: TextStyle(fontSize: 16)),
+            ]),
+            // Página 2: O que poderá fazer
+            _buildStep(children: [
+              const Icon(Icons.edit_location_alt, size: 80, color: Colors.green),
+              const SizedBox(height: 20),
+              const Text("O que você poderá fazer?", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 15),
+              const Text("• Adicionar novos pontos de interesse;\n• Relatar pontos críticos na cidade;\n• Editar informações de locais que você adicionou;\n• Ajudar na precisão dos dados do Prisma.", textAlign: TextAlign.justify, style: TextStyle(fontSize: 16, height: 1.5)),
+            ]),
+            // Página 3: Aprovação
+            _buildStep(children: [
+              const Icon(Icons.assignment_ind, size: 80, color: Colors.blueAccent),
+              const SizedBox(height: 20),
+              const Text("Como funciona a aprovação?", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 15),
+              const Text("Ao enviar sua solicitação, os administradores irão revisar seu perfil. Pedimos que descreva brevemente por que deseja ajudar o projeto.", textAlign: TextAlign.justify, style: TextStyle(fontSize: 16)),
+            ]),
+            // Página 4: Termos
+            _buildStep(children: [
+              const Icon(Icons.gavel, size: 60, color: Colors.blueGrey),
+              const SizedBox(height: 15),
+              const Text("Termos de Colaboração", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 15),
+              Container(
+                height: 200,
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(10), border: Border.all(color: Colors.grey.shade300)),
+                child: const SingleChildScrollView(
+                  child: Text("Ao colaborar, você concorda em:\n• Fornecer dados verídicos e verificáveis.\n• Não utilizar linguagem imprópria.\n• Respeitar os termos de uso do Prisma.\n• Entender que o mau uso pode levar à perda do acesso.", style: TextStyle(fontSize: 13)),
+                ),
+              ),
+              const SizedBox(height: 10),
+              CheckboxListTile(
+                title: const Text("Li e concordo com os termos", style: TextStyle(fontSize: 13)),
+                value: aceitouTermos,
+                onChanged: (val) => setState(() => aceitouTermos = val!),
+                controlAffinity: ListTileControlAffinity.leading,
+              ),
+            ]),
+            // Página 5: Formulário
+            _buildStep(children: [
+              const Text("Quase lá!", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+              const SizedBox(height: 10),
+              const Text("Explique brevemente seu interesse em colaborar:", style: TextStyle(fontSize: 14)),
               const SizedBox(height: 10),
               TextField(
                 controller: reasonController,
                 decoration: const InputDecoration(
-                  hintText: 'Digite o motivo aqui...',
+                  hintText: 'Ex: [Nome ou Instituição]\n    [Contato]\n   "Gostaria de contribuir pois pertenço a órgão social/ sou membro ativo da comunidade/ componho grupo comunitário..."',
+                  hintStyle: TextStyle(fontSize: 11, color: Colors.grey),
                   border: OutlineInputBorder(),
                 ),
-                maxLines: 3,
+                maxLines: 6, // Ajustado para não estourar a tela
+              ),
+                const SizedBox(height: 10),
+                const Text("Caso necessite de maiores esclarecimentos, entrar em contato nos emails jpfdo24@gmail.com ferreira.joao2@aluno.ifsp.edu.br", style: TextStyle(fontSize: 14)),
+            ]),
+          ];
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            content: SizedBox(
+              width: double.maxFinite,
+              height: 520, // Aumentei um pouco a altura total
+              child: Column(
+                children: [
+                  Expanded(
+                    child: PageView(
+                      controller: requestPageController,
+                      physics: const NeverScrollableScrollPhysics(),
+                      onPageChanged: (page) => setState(() => currentReqPage = page),
+                      children: steps,
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(steps.length, (index) => Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      width: currentReqPage == index ? 10 : 6,
+                      height: currentReqPage == index ? 10 : 6,
+                      decoration: BoxDecoration(color: currentReqPage == index ? Colors.blueAccent : Colors.grey, shape: BoxShape.circle),
+                    )),
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(onPressed: () => Navigator.pop(dialogContext), child: const Text('Cancelar')),
+                  ElevatedButton(
+                    // Lógica de Trava: Bloqueia se estiver na página 3 (índice dos termos) e não aceitou
+                    onPressed: (currentReqPage == 3 && !aceitouTermos)
+                        ? null 
+                        : () async {
+                            // CORREÇÃO AQUI: steps.length - 1
+                            if (currentReqPage < steps.length - 1) {
+                              requestPageController.nextPage(
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeIn,
+                              );
+                            } else {
+                              // LOGICA FIREBASE...
+                              final reason = reasonController.text.trim();
+                              if (reason.isEmpty) {
+                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Por favor, digite um motivo.')));
+                                return;
+                              }
+
+                              final user = FirebaseAuth.instance.currentUser;
+                              if (user == null) return;
+
+                              Navigator.pop(dialogContext);
+
+                              try {
+                                await FirebaseFirestore.instance.collection('solicitacoes').add({
+                                  'uid': user.uid,
+                                  'nome': user.displayName ?? 'Sem Nome',
+                                  'email': user.email ?? 'Sem Email',
+                                  'motivo': reason,
+                                  'status': 'pendente',
+                                  'data': FieldValue.serverTimestamp(),
+                                });
+
+                                final adminsQuery = await FirebaseFirestore.instance.collection('usuarios').where('cargo', isEqualTo: 'admin').get();
+                                for (var adminDoc in adminsQuery.docs) {
+                                  await FirebaseFirestore.instance.collection('notificacoes').add({
+                                    'destinatarioId': adminDoc.id,
+                                    'titulo': 'Nova Solicitação! 🔔',
+                                    'mensagem': '${user.displayName} pediu acesso de Colaborador.',
+                                    'data': FieldValue.serverTimestamp(),
+                                    'lida': false,
+                                  });
+                                }
+
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Solicitação enviada com sucesso!'), backgroundColor: Colors.green));
+                                }
+                              } catch (e) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro: $e'), backgroundColor: Colors.red));
+                                }
+                              }
+                            }
+                          },
+                    child: Text(currentReqPage == steps.length - 1 ? 'Enviar' : 'Próximo'),
+                  ),
+                ],
               ),
             ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancelar'),
-            ),
-            ElevatedButton(
-              onPressed: () async {
-                print("1. Botão Enviar clicado");
-
-                final reason = reasonController.text.trim();
-                print("2. Texto digitado: '$reason'");
-
-                if (reason.isEmpty) {
-                  print("ERRO: O texto está vazio. O envio foi cancelado.");
-                  return; 
-                }
-
-                final user = FirebaseAuth.instance.currentUser;
-                print("3. Usuário atual: ${user?.uid}");
-
-                if (user == null) {
-                  print("ERRO: Usuário não está logado.");
-                  return;
-                }
-
-                // Fecha o diálogo visualmente
-                Navigator.pop(dialogContext);
-                print("4. Diálogo fechado, tentando enviar para o Firebase...");
-
-                try {
-                  await FirebaseFirestore.instance.collection('solicitacoes').add({
-                    'uid': user.uid,
-                    'nome': user.displayName ?? 'Sem Nome',
-                    'email': user.email ?? 'Sem Email',
-                    'motivo': reason,
-                    'status': 'pendente',
-                    'data': FieldValue.serverTimestamp(),
-                  });
-                  
-                  print("5. SUCESSO! Documento criado no Firebase.");
-
-                  try {
-                    // 1. Procura quem são os administradores no banco
-                    final adminsQuery = await FirebaseFirestore.instance
-                        .collection('usuarios')
-                        .where('cargo', isEqualTo: 'admin')
-                        .get();
-
-                    // 2. Manda uma notificação para CADA admin encontrado
-                    for (var adminDoc in adminsQuery.docs) {
-                      await FirebaseFirestore.instance.collection('notificacoes').add({
-                        'destinatarioId': adminDoc.id, // O ID do Admin
-                        'titulo': 'Nova Solicitação! 🔔',
-                        'mensagem': '${user.displayName} pediu acesso de Colaborador.',
-                        'data': FieldValue.serverTimestamp(),
-                        'lida': false,
-                      });
-                    }
-                    print("6. Admins notificados.");
-                  } catch (e) {
-                    print("Erro ao notificar admins (não impede o fluxo): $e");
-                  }
-
-                  // Mostra mensagem de sucesso
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Solicitação enviada com sucesso!'), backgroundColor: Colors.green),
-                    );
-                  }
-                } catch (e) {
-                  print("ERRO CRÍTICO NO FIREBASE: $e");
-                  
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Erro: $e'), backgroundColor: Colors.red),
-                    );
-                  }
-                }
-              },
-              child: const Text('Enviar'),
-            ),
-          ],
-        );
-      },
-    );
-  }
+          );
+        },
+      );
+    },
+  );
+}
 
   @override
   Widget build(BuildContext context) {
@@ -885,10 +1164,34 @@ void _showPointDetails(Map<String, dynamic> data, String docId,LatLng point, boo
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Prisma'),
-        centerTitle: true,
-        actions: [
+        centerTitle: true, // Centraliza o nome "Prisma"
+        title: const Text(
+          "Prisma",
+          style: TextStyle(fontWeight: FontWeight.normal),
+        ),
+        
+        leading: Builder(
+          builder: (context) {
+            return Row(
+              children: [
+              
+              IconButton(
+                icon: const Icon(Icons.menu),
+                onPressed: () => Scaffold.of(context).openDrawer(),
+              ),
 
+              IconButton(
+                        icon: const Icon(Icons.help_outline),
+                        onPressed: () => _showOnboarding(context),
+                      ),
+                    ],
+                  );
+                },
+              ),
+              leadingWidth: 100, // Aumentamos a largura para caber o menu + ajuda se necessário
+
+          // O que fica na DIREITA
+          actions: [
           IconButton(
             icon: const Icon(Icons.notifications),
             onPressed: () {
@@ -1156,7 +1459,7 @@ drawer: Drawer(
                   },
                 ),
               ],
-        
+          ],
         const Divider(thickness: 2),
         const Padding(
         padding: EdgeInsets.only(left: 16, top: 10, bottom: 5),
@@ -1172,6 +1475,7 @@ drawer: Drawer(
         },
       ),
 
+      if (!isVisitante) ...[
         ListTile(
         leading: const Icon(Icons.logout, color: Colors.red),
         title: const Text('Fazer Logout', style: TextStyle(color: Colors.red)),
@@ -1183,6 +1487,7 @@ drawer: Drawer(
           _confirmarSaida(context);
         },
       ),
+    ],
 
         ListTile(
           leading: const Icon(Icons.exit_to_app, color: Color.fromARGB(255, 54, 89, 244)),
@@ -1195,9 +1500,11 @@ drawer: Drawer(
 
     
       const SizedBox(height: 20), // Espaço final
-      ],
     ],
   ),
+
+
+
 ),
 
       body: StreamBuilder<QuerySnapshot>(
@@ -1386,13 +1693,18 @@ drawer: Drawer(
                         ),
                       ),
                     ),
-                ],
+                  ],
               ),
             ),
           );
         }).toList();
 
-          return _buildMap(markers);
+          return Stack(
+            children: [
+              // 1. O seu mapa original
+              _buildMap(markers),
+            ],
+          );
         },
       ),
       
