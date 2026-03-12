@@ -90,11 +90,13 @@ class MyApp extends StatelessWidget {
 }
 
 Widget _buildStep({required List<Widget> children}) {
-  return Padding(
-    padding: const EdgeInsets.all(20),
+  return SingleChildScrollView(
+    // O padding evita que o texto encoste nas bordas do diálogo
+    padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
     child: Column(
-      mainAxisAlignment: MainAxisAlignment.center, // Centraliza tudo verticalmente
-      children: children, // Aqui entram os elementos na ordem que você escolher
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: children,
     ),
   );
 }
@@ -488,70 +490,70 @@ Future<void> _setupInitialLocation() async {
             const SizedBox(height: 15),
             Image.asset("assets/icon/app_icon.png", height: 200),
             const SizedBox(height: 20),
-            const Text("Este app mapeia os indicadores de qualidade de vida e direitos humanos da sua cidade.", style: TextStyle(fontSize: 15, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const Text("Este app mapeia os indicadores de qualidade de vida e direitos humanos da sua cidade.", style: TextStyle(fontSize: 17, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
           ]),
           _buildStep(children: [
             const Text("Locais", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
-            Image.asset("assets/icon/tutorial_locais.png", height: 280),
+            Image.asset("assets/icon/tutorial_locais.png", height: 300),
             const SizedBox(height: 10),
-            const Text("Os ícones distribuídos pelo mapa definem locais significativos para você quanto cidadão, indicando a sua localização e fornecendo mais informação clicando sobre eles.", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const Text("Os ícones distribuídos pelo mapa definem locais significativos para você quanto cidadão, indicando a sua localização e fornecendo mais informação clicando sobre eles.", style: TextStyle(fontSize: 17, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
           ]),
           _buildStep(children: [
             const Text("Informações", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
-            const Text("Cada ponto possui título, descritor e subdescritor (categoria que mais se aproxima da sua finalidade), descrição com informações mais detalhadas e um botão que traça uma rota até o local.", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const Text("Cada ponto possui título, descritor e subdescritor (categoria que mais se aproxima da sua finalidade), descrição com informações mais detalhadas e um botão que traça uma rota até o local.", style: TextStyle(fontSize: 17, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
             const SizedBox(height: 10),
-            Image.asset("assets/icon/tutorial_info.png", height: 270),
+            Image.asset("assets/icon/tutorial_info.png", height: 300),
           ]),
           _buildStep(children: [
             const Text("Menu", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
-            const Text("O ícone de 'três risquinhos' no canto superior esquerdo, permite consultar os dados do usuário e configurar a forma de vizualização dos pontos do mapa.", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const Text("O ícone de 'três risquinhos' no canto superior esquerdo, permite consultar os dados do usuário e configurar a forma de vizualização dos pontos do mapa.", style: TextStyle(fontSize: 17, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
             const SizedBox(height: 10),
-            Image.asset("assets/icon/tutorial_menu.png", height: 270),
+            Image.asset("assets/icon/tutorial_menu.png", height: 300),
           ]),
           _buildStep(children: [
             const Text("Diferença de Marcadores", style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
-            const Text("Os ícones do mapa são divididos em 'locais' e 'pontos críticos'. Locais são prédios, órgãos e serviços de teor social e Pontos Críticos são locais ou regiões que demandam alguma manutenção ou atenção perante a população e/ou agentes responsáveis.", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const Text("Os ícones do mapa são divididos em 'locais' e 'pontos críticos'. Locais são prédios, órgãos e serviços de teor social e Pontos Críticos são locais ou regiões que demandam alguma manutenção ou atenção perante a população e/ou agentes responsáveis.", style: TextStyle(fontSize: 17, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
             const SizedBox(height: 10),
-            Image.asset("assets/icon/tutorial_pontos.png", height: 240),
+            Image.asset("assets/icon/tutorial_pontos.png", height: 300),
           ]),
           _buildStep(children: [
             const Text("Filtro de Descritores", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
-            const Text("Os descritores são categorias que auxiliam na vizualização de pontos específicos, permitindo filtrar os locais de maior interesse do usuário, desmarcando o 'Selecionar todos' e então clicando no descritor e/ou subdescritor que deseja vizualizar.", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const Text("Os descritores são categorias que auxiliam na vizualização de pontos específicos, permitindo filtrar os locais de maior interesse do usuário, desmarcando o 'Selecionar todos' e então clicando no descritor e/ou subdescritor que deseja vizualizar.", style: TextStyle(fontSize: 17, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
             const SizedBox(height: 10),
-            Image.asset("assets/icon/tutorial_filtros.png", height: 210),
+            Image.asset("assets/icon/tutorial_filtros.png", height: 300),
           ]),
           _buildStep(children: [
             const Text("Login", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
-            const Text("Convidamos todos os usuários do Prisma a realizem o login no final do menu, conferir mais informações sobre o aplicativo em 'Sobre o App' e fechá-lo caso as atividades sejam concluídas", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const Text("Convidamos todos os usuários do Prisma a realizem o login no final do menu, conferir mais informações sobre o aplicativo em 'Sobre o App' e fechá-lo caso as atividades sejam concluídas", style: TextStyle(fontSize: 17, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
             const SizedBox(height: 10),
-            Image.asset("assets/icon/tutorial_login.png", height: 270),
+            Image.asset("assets/icon/tutorial_login.png", height: 300),
           ]),
           _buildStep(children: [
             const Text("Tela de Login", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
-            Image.asset("assets/icon/tutorial_tela_de_login.png", height: 220),
+            Image.asset("assets/icon/tutorial_tela_de_login.png", height: 300),
             const SizedBox(height: 10),
-            const Text("Para realizar o login recomenda-se que seja lido os 'Termos de Uso' e 'Política de Privacidade', assinalando logo após a caixinha confirmando que leu e concorda com os termos. O login pode ser feito através de uma 'Conta Google' ou preenchendo os dados em 'Criar conta agora'.", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const Text("Para realizar o login recomenda-se que seja lido os 'Termos de Uso' e 'Política de Privacidade', assinalando logo após a caixinha confirmando que leu e concorda com os termos. O login pode ser feito através de uma 'Conta Google' ou preenchendo os dados em 'Criar conta agora'.", style: TextStyle(fontSize: 17, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
           ]),
           _buildStep(children: [
             const Text("Colaborador", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
-            const Text("Ao finalizar o primeiro login assume-se o cargo de 'leitor', porém mesmo no papel de visitante, tem-se o direito de acessar todos os pontos, descritores e suas demais funcionalidades. Porém, se desejar adicionar novos pontos, descritores e contribuir com o Prisma é necessário solicitar se tornar um 'Colaborador', contendo mais informações no botão 'Quero ser um colaborador' ao fim do menu no cargo de Leitor.", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const Text("Ao finalizar o primeiro login assume-se o cargo de 'leitor', porém mesmo no papel de visitante, tem-se o direito de acessar todos os pontos, descritores e suas demais funcionalidades. Porém, se desejar adicionar novos pontos, descritores e contribuir com o Prisma é necessário solicitar se tornar um 'Colaborador', contendo mais informações no botão 'Quero ser um colaborador' ao fim do menu no cargo de Leitor.", style: TextStyle(fontSize: 17, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
             const SizedBox(height: 10),
-            Image.asset("assets/icon/tutorial_colaborador.png", height: 120),
+            Image.asset("assets/icon/tutorial_colaborador.png", height: 250),
           ]),          
           _buildStep(children: [
             const Text("Ajuda", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
-            const Text("Se for necessário consultar este guia novamente, basta clicar no ícone de interrogação no canto superior esquerdo.", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const Text("Se for necessário consultar este guia novamente, basta clicar no ícone de interrogação no canto superior esquerdo.", style: TextStyle(fontSize: 17, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
             const SizedBox(height: 10),
-            Image.asset("assets/icon/tutorial_ajuda.png", height: 270),
+            Image.asset("assets/icon/tutorial_ajuda.png", height: 300),
           ]),
 
         ];
@@ -564,8 +566,8 @@ Future<void> _setupInitialLocation() async {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               content: SizedBox(
                 width: double.maxFinite,
-                height: 550, // Altura ajustada para caber os pontos
-                child: Column(
+                height: MediaQuery.of(context).size.height * 0.7,                
+                  child: Column(
                   children: [
                     Expanded(
                       child: PageView(
@@ -1907,7 +1909,7 @@ drawer: Drawer(
               
               'Acessibilidade e Inclusão': 'acessibilidade',
 
-              'Bibliotecas': 'bibliotecas',
+              'Bibliotecas': 'biblioteca',
               'Educação Infantil': 'educacao_infantil',
               'Ensino Fundamental': 'ensino_fundamental',
               'Ensino Médio': 'ensino_medio',
