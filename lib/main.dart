@@ -544,7 +544,7 @@ Future<void> _setupInitialLocation() async {
           _buildStep(children: [
             const Text("Colaborador", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
-            const Text("Ao finalizar o primeiro login assume-se o cargo de 'leitor', porém mesmo no papel de visitante, tem-se o direito de acessar todos os pontos, descritores e suas demais funcionalidades. Porém, se desejar adicionar novos pontos, descritores e contribuir com o Prisma é necessário solicitar se tornar um 'Colaborador', contendo mais informações no botão 'Quero ser um colaborador' ao fim do menu no cargo de Leitor.", style: TextStyle(fontSize: 17, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const Text("Ao finalizar o primeiro login assume-se o cargo de 'leitor(a)', porém mesmo no papel de visitante, tem-se o direito de acessar todos os pontos, descritores e suas demais funcionalidades. Porém, se desejar adicionar novos pontos, descritores e contribuir com o Prisma é necessário solicitar se tornar um 'Colaborador(a)', contendo mais informações no botão 'Quero ser um colaborador(a)' ao fim do menu no cargo de Leitor(a).", style: TextStyle(fontSize: 17, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
             const SizedBox(height: 10),
             Image.asset("assets/icon/tutorial_colaborador.png", height: 250),
           ]),          
@@ -668,11 +668,11 @@ Future<void> _setupInitialLocation() async {
         // Definimos a lista de páginas aqui para facilitar o cálculo do tamanho
         final List<Widget> pages = [
           _buildStep(children: [
-            const Text("Bem-vindo \nnovo colaborador!", style: TextStyle(fontSize: 27, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+            const Text("Bem-vindo \nnovo colaborador(a)!", style: TextStyle(fontSize: 27, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
             const SizedBox(height: 15),
             Image.asset("assets/icon/app_icon.png", height: 200),
             const SizedBox(height: 20),
-            const Text("Para que você possa dar seguimento no seu novo cargo de Colaborador, vou mostrar como funciona o processo de salvar novos pontos.", style: TextStyle(fontSize: 15, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const Text("Para que você possa dar seguimento na sua nova função de Colaborador(a), vou mostrar como funciona o processo de salvar novos pontos.", style: TextStyle(fontSize: 15, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
           ]),
           _buildStep(children: [
             const Text("Pesquisa", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
@@ -705,7 +705,7 @@ Future<void> _setupInitialLocation() async {
           _buildStep(children: [
             const Text("Edição e Exclusão", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 10),
-            const Text("Ao adicionar um ponto é possível editar para atualizações e/ou excluir, porém o colaborador só tem permissão para modificar pontos que ele mesmo adicionou, onde após o próprio colaborador, os únicos que podem realizar alterações nos demais pontos são os usuáiors com cargo de 'Admin'.", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const Text("Ao adicionar um ponto é possível editar para atualizações e/ou excluir, porém o(a) colaborador(a) só tem permissão para modificar pontos que ele(a) mesmo(a) adicionou, os únicos que podem realizar alterações nos demais pontos são os usuários com cargo de 'Admin'.", style: TextStyle(fontSize: 14, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
             const SizedBox(height: 10),
             Image.asset("assets/icon/colab_edit.png", height: 210),
           ]),
@@ -832,7 +832,7 @@ Future<void> _setupInitialLocation() async {
             const SizedBox(height: 15),
             Image.asset("assets/icon/app_icon.png", height: 200),
             const SizedBox(height: 20),
-            const Text("Para que você possa dar seguimento no seu novo cargo de Admin, vou mostrar algumas fucionalidades.", style: TextStyle(fontSize: 15, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
+            const Text("Para que você possa dar seguimento a sua nova de Admin, vou mostrar algumas fucionalidades.", style: TextStyle(fontSize: 15, fontWeight: FontWeight.normal), textAlign: TextAlign.justify),
           ]),
           _buildStep(children: [
             const Text("Pesquisa", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
@@ -993,7 +993,7 @@ Future<void> _setupInitialLocation() async {
         child: Text(
           'O Prisma é uma ferramenta colaborativa desenvolvida por alunos e docentes do Intituto Federal de São Paulo, campus Birigui, com a finalidade de catalogar através de um mapa, os indicadores de Qualidade de Vida e Direitos Humanos da cidade de Birigui-SP e região. '
           '\n\nNosso objetivo é dar voz aos cidadãos, identificando pontos positivos e críticos na cidade.'
-          '\n\nRecomendamos que todos os usuarios estejam cientes de nossos Termos de Uso e Políticas de Privacidade a fim de otimizar e potencializar o uso do aplicativo',
+          '\n\nRecomendamos que todos os usuários estejam cientes de nossos Termos de Uso e Políticas de Privacidade a fim de otimizar e potencializar o uso do aplicativo',
           style: TextStyle(fontSize: 14),
           textAlign: TextAlign.justify,
         ),
@@ -1784,7 +1784,7 @@ drawer: Drawer(
         if (userRole == 'leitor')
           ListTile(
             leading: const Icon(Icons.volunteer_activism, color: Color(0xFF4CAF50)),
-            title: const Text('Quero ser Colaborador'),
+            title: const Text('Quero ser Colaborador(a)'),
             onTap: () {
               Navigator.pop(context); 
                     // 2. Chama a função que estava "desligada" (unused)

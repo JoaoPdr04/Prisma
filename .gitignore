@@ -43,3 +43,17 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Firebase (Arquivos de configuração sensíveis)
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+
+# Assinatura de App e Chaves (Crucial para não roubarem sua conta de dev)
+*.jks
+*.keystore
+*.p12
+*.key
+*.pem
+
+# Variáveis de ambiente (Se você usar pacotes como flutter_dotenv)
+.env
